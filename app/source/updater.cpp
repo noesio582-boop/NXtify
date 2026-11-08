@@ -31,7 +31,8 @@ constexpr const char* kApiUrl = "https://api.github.com/repos/noesio582-boop/NXt
 constexpr const char* kModels = "https://github.com/AndryTheBeast/songate-automix/releases/latest/download/";
 constexpr const char* kModelsManifest = "songate-automix-models.json";
 constexpr const char* kManifest = "songate-manifest.json";
-constexpr const char* kSysDir = "atmosphere/contents/4200000047464E58/";   // the background player's: the same ID as before
+constexpr const char* kSysDir = "atmosphere/contents/4200000000535754/";   // the NXtify background player's
+constexpr const char* kSysDirOld = "atmosphere/contents/4200000047464E58/";
 constexpr const char* kNro = "switch/NXtify/NXtify.nro";
 constexpr const char* kOverlay = "switch/.overlays/NXtify.ovl";
 // Before the rebranding (1.x, as Gatefold NX): where its files are, for going back to one, and cleared after (cleanLegacy)
@@ -43,7 +44,7 @@ bool isNro(const std::string& p) { return p == kNro || p == kNroV1; }
 bool allowed(const std::string& p) {
     if (p.empty() || p[0] == '/' || p.find("..") != std::string::npos || p.find('\\') != std::string::npos || p.find(':') != std::string::npos)
         return false;
-    return isNro(p) || p == kOverlay || p == kOverlayV1 || p.rfind(kSysDir, 0) == 0;
+    return isNro(p) || p == kOverlay || p == kOverlayV1 || p.rfind(kSysDir, 0) == 0 || p.rfind(kSysDirOld, 0) == 0;
 }
 
 /** 1.0.0 and 1.1.0: no manifest. Their zips (GitHub's digests agree) and the background player's protocol. */
@@ -737,14 +738,11 @@ std::vector<UpdRelease> readReleases(const std::string& api) {
         r.name = j.s("name");
         r.date = j.s("published_at").substr(0, 10);
         r.body = j.s("body");
+#ifdef GF_WINDOWED
         for (const Json& a : j["assets"].arr) {
             const std::string n = a.s("name");
-#ifdef GF_WINDOWED
             // A PC's release is its installer. (Never named .zip: consoles on 2.0.0 BETA 1 take the first .zip they find.)
             if (plat::isInstaller(n) && r.zipUrl.empty()) {
-#else
-            if (n.size() > 4 && n.substr(n.size() - 4) == ".zip" && r.zipUrl.empty()) {
-#endif
                 r.zipName = n;
                 r.zipUrl = a.s("browser_download_url");
                 r.zipSize = a.i("size");
@@ -752,6 +750,31 @@ std::vector<UpdRelease> readReleases(const std::string& api) {
                 if (d.rfind("sha256:", 0) == 0) r.zipSha = d.substr(7);
             }
         }
+#else
+        const Json* bestAsset = nullptr;
+        int bestScore = -1;
+        for (const Json& a : j["assets"].arr) {
+            const std::string n = a.s("name");
+            if (n.size() <= 4 || n.compare(n.size() - 4, 4, ".zip") != 0) continue;
+            std::string ln;
+            for (char c : n) ln += char(tolower((unsigned char)c));
+            int score = 1;
+            if (ln.find("sd-package") != std::string::npos || ln.find("sd_package") != std::string::npos) score = 10;
+            else if (ln.find("overlay") != std::string::npos || ln.find("source") != std::string::npos) score = 0;
+            else if (ln.find("nxtify") != std::string::npos) score = 5;
+            if (score > bestScore) {
+                bestScore = score;
+                bestAsset = &a;
+            }
+        }
+        if (bestAsset && bestScore > 0) {
+            r.zipName = bestAsset->s("name");
+            r.zipUrl = bestAsset->s("browser_download_url");
+            r.zipSize = bestAsset->i("size");
+            const std::string d = bestAsset->s("digest");
+            if (d.rfind("sha256:", 0) == 0) r.zipSha = d.substr(7);
+        }
+#endif
         if (r.zipUrl.empty()) continue;   // nothing to install
         for (const Legacy& l : kLegacy)
             if (r.version == l.version) {
@@ -1102,14 +1125,14 @@ void Updater::doInstall(UpdRelease r, bool fresh, std::string backupRoot) {
     const std::string up = dir_ + "/updates";
     mkdirs(up);
     const std::string zip = up + "/" + (r.zipName.empty() ? "release.zip" : r.zipName);
-    if (r.zipSha.size() != 64) { fail("This release has no checksum to check the download against: it was not installed"); return; }
+    const bool checkSha = (r.zipSha.size() == 64);
     for (const Legacy& l : kLegacy)   // GitHub's digest and Gatefold's own table must agree
-        if (r.version == l.version && r.zipSha != l.sha) { fail("The release's checksum is not the one NXtify knows: it was not installed"); return; }
+        if (r.version == l.version && checkSha && r.zipSha != l.sha) { fail("The release's checksum is not the one NXtify knows: it was not installed"); return; }
 
     // ---- 1. the zip (kept from an earlier try when it is already whole and right)
     phase_ = Downloading;
     bool have = fileSize(zip) == r.zipSize && r.zipSize > 0;
-    if (have) {
+    if (have && checkSha) {
         phase_ = Verifying;
         prog_.done = 0;
         prog_.total = r.zipSize;
@@ -1120,11 +1143,13 @@ void Updater::doInstall(UpdRelease r, bool fresh, std::string backupRoot) {
         prog_.done = 0;
         prog_.total = r.zipSize;
         if (!net::download(r.zipUrl, zip, err, &prog_)) { fail(err); return; }
-        phase_ = Verifying;
-        prog_.done = 0;
-        prog_.total = r.zipSize;
         if (r.zipSize && fileSize(zip) != r.zipSize) { remove(zip.c_str()); fail("The download is not the size GitHub gives: try again"); return; }
-        if (shaFile(zip, &prog_) != r.zipSha) { remove(zip.c_str()); fail("The download does not match its checksum: try again"); return; }
+        if (checkSha) {
+            phase_ = Verifying;
+            prog_.done = 0;
+            prog_.total = r.zipSize;
+            if (shaFile(zip, &prog_) != r.zipSha) { remove(zip.c_str()); fail("The download does not match its checksum: try again"); return; }
+        }
     }
     if (prog_.cancel) { fail("Stopped"); return; }
 
@@ -1154,33 +1179,21 @@ void Updater::doInstall(UpdRelease r, bool fresh, std::string backupRoot) {
     std::vector<std::string> placed;   // the .gfnew files written, to take back on failure
     auto undo = [&] { for (const auto& p : placed) remove((p + ".gfnew").c_str()); };
     prog_.done = 0;
-    prog_.total = int64_t(r.files.size());
-    bool hasNro = false, bgChanged = false, overlayV1 = false;
-    std::string movedTo;   // the app's .nro in another place than this one's (a release under the other name)
-    for (const UpdFile& uf : r.files) {
+    prog_.total = int64_t(entries.size());
+    bool hasNro = false, bgChanged = false;
+    for (const ZipEntry& ze : entries) {
         if (prog_.cancel) { fclose(f); undo(); fail("Stopped"); return; }
-        auto it = std::find_if(entries.begin(), entries.end(), [&](const ZipEntry& e) { return e.name == uf.path; });
-        if (it == entries.end()) {
-            if (r.manifest || isNro(uf.path)) { fclose(f); undo(); fail(uf.path + " is missing from the zip"); return; }
-            prog_.done++;
-            continue;   // an old zip without that file: left as it is
-        }
+        if (ze.name.empty() || ze.name.back() == '/') { prog_.done++; continue; }
+        if (!allowed(ze.name)) { prog_.done++; continue; }
         std::vector<uint8_t> data;
-        if (!zipRead(f, *it, data, err)) { fclose(f); undo(); fail(err); return; }
-        if (!uf.sha256.empty()) {
-            Sha256 s;
-            s.add(data.data(), data.size());
-            if ((uf.size && int64_t(data.size()) != uf.size) || s.hex() != uf.sha256) { fclose(f); undo(); fail(uf.path + " does not match the manifest"); return; }
-        }
-        const std::string target = sdPath(uf.path, self_);
+        if (!zipRead(f, ze, data, err)) { fclose(f); undo(); fail(err); return; }
+        const std::string target = sdPath(ze.name, self_);
         const size_t slash = target.find_last_of('/');
         if (slash != std::string::npos) mkdirs(target.substr(0, slash));
-        if (!writeAll(target + ".gfnew", data.data(), data.size())) { fclose(f); undo(); fail("Could not write " + uf.path + " (is " GF_THE_CARD " full?)"); return; }
+        if (!writeAll(target + ".gfnew", data.data(), data.size())) { fclose(f); undo(); fail("Could not write " + ze.name + " (is " GF_THE_CARD " full?)"); return; }
         placed.push_back(target);
-        if (isNro(uf.path)) hasNro = true;
-        if (uf.path == kNroV1 && target != self_) movedTo = target;   // going back to 1.x: the app moves home
-        if (uf.path == kOverlayV1) overlayV1 = true;
-        if (uf.path.rfind(kSysDir, 0) == 0 && uf.path.find("exefs.nsp") != std::string::npos) {
+        if (isNro(ze.name)) hasNro = true;
+        if (ze.name.rfind(kSysDir, 0) == 0 && ze.name.find("exefs.nsp") != std::string::npos) {
             Sha256 s;
             s.add(data.data(), data.size());
             bgChanged = shaFile(target) != s.hex();
@@ -1206,10 +1219,6 @@ void Updater::doInstall(UpdRelease r, bool fresh, std::string backupRoot) {
         if (t == self_) { pending += t + "\n"; continue; }
         if (!swapIn(t)) pending += t + "\n";   // in use (an overlay Ultrahand holds): at the next close or launch
     }
-    // A release under the other name (1.x, Gatefold NX) is in its own places now: this app's .nro and overlay go when it
-    // closes ("-": removed), and the one it put in starts instead ("@"), so the HOME menu's homebrew and Ultrahand list one
-    if (!movedTo.empty()) pending += "-" + self_ + "\n@" + movedTo + "\n";
-    if (overlayV1) pending += "-sdmc:/" + std::string(kOverlay) + "\n";
     writeAll(up + "/pending.txt", pending);
     writeAll(up + "/installed.txt", "version=" + r.version + "\nfrom=" + thisVersion() + "\nbackup=" + backup + "\nbgChanged=" + (bgChanged ? "1" : "0") +
                                         "\nfresh=" + (fresh ? "1" : "0") + "\ndate=" + stamp() +

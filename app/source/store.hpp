@@ -96,6 +96,7 @@ struct Store {
     float pointerSpeed = 0.2f;   // Settings shows it doubled: 40%
     float motionSpeed = 0.5f;
     bool pointerAccel = true;
+    bool mouseMode = false;
     bool frameTimes = false;        // Settings → About: the frame-time graph
     int heldOrder = -1;             // Shuffle, set aside while an Automix playlist plays (App::holdOrderForAutomix); -1 none
     std::string automixModel;       // the Automix model by its name ("Automix V1.2.0"): Settings › Updates › Automix models (a
@@ -150,10 +151,9 @@ struct Store {
     bool showHidden = false;   // Files: names starting with a dot
     // Settings → Storage and reset → Folders: where each browser starts (empty: its own default)
     std::string filesDir, importDir, exportDir, coverDir, backupDir;
-    // Settings → Updates: 0 off (nothing goes online; the default until you allow it), 1 allowed; a check at launch;
-    // the newer version already announced at launch (once per version)
-    int updates = 0;
-    bool updateAtStart = false;
+    // Settings → Updates: 0 off, 1 allowed (default); automatic check at launch
+    int updates = 1;
+    bool updateAtStart = true;
     bool betas = false;   // Beta versions: listed (apart) and offered; asked first (App::allowBetas)
     bool reports = false; // Settings › Support › Reports: off, nothing can be sent; on, asked first (App::allowReports)
     std::string updateToasted;

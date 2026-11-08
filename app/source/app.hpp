@@ -1269,6 +1269,6 @@ private:
     bool settingsFocusFirst = false;   // a category was chosen: its first setting takes the focus next frame
     int settingsCatSeen_ = -1;   // the category last drawn: opening one may read the card once (drawSettings)
     /** Settings' categories that other pages open by number (the progress cards, the equalizer button). */
-    enum SettingsCat { SetAppearance = 0, SetPlayback = 1, SetEqualizer = 2, SetLibrary = 3, SetStorage = 4, SetReset = 9, SetUpdates = 10, SetSupport = 11 };   // (Reset above Updates: the user, 2026-10-30)
+    enum SettingsCat { SetAppearance = 0, SetPlayback = 1, SetEqualizer = 2, SetLibrary = 3, SetStorage = 4, SetControls = 6, SetUpdates = 7, SetReset = 8, SetSupport = 8, SetAbout = 9 };
     std::string settingsQuery;
 };

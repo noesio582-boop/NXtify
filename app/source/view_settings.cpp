@@ -692,12 +692,120 @@ void App::drawSettings(float x, float y, float w, float h) {
                                        tr("The left stick moves a pointer; A taps under it", "El stick izquierdo mueve un puntero; A selecciona bajo el"), "set.ptrspeed", store.pointerSpeed);
         const Row motionSpeedRow = sliderRow(tr("Motion pointer speed", "Velocidad del puntero por movimiento"), pct(store.motionSpeed * 2),
                                              tr("Sensitivity when aiming with the right Joy-Con", "Sensibilidad al apuntar con el Joy-Con derecho"), "set.motionspeed", store.motionSpeed);
+        const Row mouseModeRow = toggleRow(tr("Mouse mode (Beta)", "Modo mouse (Beta)"),
+                                           tr("Use the right Joy-Con on a surface with the rail down, like a mouse; ZR or A clicks", "Usa el Joy-Con derecho sobre una superficie con el rail hacia abajo, como un mouse; ZR o A hace clic"),
+                                           "set.mousemode", store.mouseMode);
         const Row accelRow = toggleRow(tr("Pointer acceleration", "Aceleracion del puntero"), tr("Slow for small moves, fast when the stick is pushed all the way", "Lento para movimientos cortos, rapido al inclinar el stick al maximo"),
                                        "set.ptraccel", store.pointerAccel);
         sections.push_back({ tr("Controls", "Controles"), ICON_SLIDERS,
                              { { tr("Buttons", "Botones"), keys },
-                               { tr("Pointer", "Puntero"), { speedRow, motionSpeedRow, accelRow } },
+                               { tr("Pointer", "Puntero"), { speedRow, motionSpeedRow, mouseModeRow, accelRow } },
                                { tr("Touch", "Pantalla tactil"), { infoRow(tr("Touch works everywhere", "La pantalla tactil funciona en toda la app"), tr("Tap, drag lists with momentum, drag the seek bar and the volume", "Toca, desliza listas con inercia, arrastra la barra de progreso y el volumen")) } } } });
+    }
+
+    // Updates
+    {
+        std::vector<Card> cards;
+
+        // Pending restart card if an update is waiting to finish
+        if (updater.installed.appPending || updater.justInstalled) {
+            cards.push_back({
+                tr("Update ready", "Actualizacion lista"),
+                { buttonRow(
+                    tr("Restart NXtify", "Reiniciar NXtify"),
+                    tr("Restart now to complete installing the update", "Reinicia ahora para completar la instalacion"),
+                    "set.updrelaunch",
+                    ICON_REFRESH,
+                    tr("Restart now", "Reiniciar ahora"),
+                    [this] { finishUpdate(); }
+                ) }
+            });
+        }
+
+        // Automatic checking & manual check
+        std::vector<Row> checkRows;
+        std::string checkHint;
+        if (updater.busy()) {
+            checkHint = updateStatus();
+        } else if (updater.checkedAt > 0) {
+            const time_t t = (time_t)updater.checkedAt;
+            char b[32];
+            struct tm* tm = localtime(&t);
+            if (tm) strftime(b, sizeof(b), "%Y-%m-%d %H:%M", tm);
+            else snprintf(b, sizeof(b), "OK");
+            checkHint = tr("Last checked: ", "Ultima comprobacion: ") + std::string(b);
+        } else {
+            checkHint = tr("Check GitHub for newer versions of NXtify", "Comprobar en GitHub si hay versiones mas recientes de NXtify");
+        }
+
+        checkRows.push_back(buttonRow(
+            tr("Check for updates", "Buscar actualizaciones"),
+            checkHint,
+            "set.updcheck",
+            ICON_DOWNLOAD,
+            updater.busy() ? tr("Checking...", "Buscando...") : tr("Check now", "Buscar ahora"),
+            [this] { checkUpdates(false); }
+        ));
+
+        checkRows.push_back(toggleRow(
+            tr("Check when NXtify starts", "Buscar al iniciar NXtify"),
+            tr("Automatically check for updates on startup", "Buscar actualizaciones automaticamente al abrir la aplicacion"),
+            "set.updstart",
+            store.updateAtStart
+        ));
+
+        checkRows.push_back(toggleRow(
+            tr("Beta versions", "Versiones beta"),
+            tr("Include preview and test releases", "Incluir versiones preliminares y de prueba"),
+            "set.updbeta",
+            store.betas
+        ));
+
+        checkRows.push_back(infoRow(
+            tr("Installed version", "Version instalada"),
+            "",
+            Updater::thisVersion()
+        ));
+
+        cards.push_back({ tr("System updates", "Actualizaciones del sistema"), checkRows });
+
+        // Releases list
+        std::vector<Row> relRows;
+        if (updater.releases.empty()) {
+            relRows.push_back(infoRow(
+                tr("No releases loaded", "No hay versiones cargadas"),
+                tr("Press 'Buscar ahora' above to query GitHub", "Presiona 'Buscar ahora' arriba para consultar GitHub"),
+                ""
+            ));
+        } else {
+            for (size_t i = 0; i < updater.releases.size(); i++) {
+                const auto& r = updater.releases[i];
+                const int cmp = Updater::compare(r.version, Updater::thisVersion());
+                const std::string status = (cmp > 0) ? tr("New", "Nueva") : (cmp == 0) ? tr("Current", "Actual") : tr("Old", "Anterior");
+                const std::string label = Updater::releaseName(r.version) + " (" + status + ")";
+                std::string sub = r.date;
+                if (r.zipSize > 0) {
+                    char mb[32];
+                    snprintf(mb, sizeof(mb), " · %.1f MB", double(r.zipSize) / (1024.0 * 1024.0));
+                    sub += mb;
+                }
+                const char* icon = (cmp > 0) ? ICON_DOWNLOAD : (cmp == 0) ? ICON_CHECK : ICON_HISTORY;
+                const std::string btnText = (cmp > 0) ? tr("Update", "Actualizar") : tr("Details", "Detalles");
+
+                const float bw = std::max(120.f, float(g.measure(btnText, { css::Sm, Weight::SemiBold }) + 32 + 24));
+                const Id rid = uid("set.updrel", int64_t(i));
+                Row rrow{ label, "", sub, bw, [this, rid, icon, btnText, i, bw](float rx, float cy) {
+                    bool c = false;
+                    button(rid, icon, btnText, rx - bw, cy - 17, false, &c, false, false, 0, bw);
+                    if (c) openRelease(int(i));
+                } };
+                rrow.focus = rid;
+                relRows.push_back(rrow);
+            }
+        }
+        cards.push_back({ tr("Available versions", "Versiones disponibles"), relRows });
+
+        sections.push_back({ tr("Updates", "Actualizaciones"), ICON_DOWNLOAD, cards });
     }
 
     // Support: a report from the console to NXtify on GitHub

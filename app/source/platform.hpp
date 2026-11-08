@@ -52,7 +52,7 @@ uint64_t padDown();   // pressed this frame
 uint64_t padHeld();
 Stick stick(int which);   // 0 left, 1 right
 bool isJoyConDetached();
-bool rightJoyConMotion(float& dx, float& dy);
+bool rightJoyConMotion(float& dx, float& dy, bool mouseMode = false);
 
 // ---- typing
 enum class TextResult { Done, Cancelled, Unavailable };

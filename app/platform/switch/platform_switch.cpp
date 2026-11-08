@@ -219,7 +219,7 @@ bool isJoyConDetached() {
     return false;
 }
 
-bool rightJoyConMotion(float& dx, float& dy) {
+bool rightJoyConMotion(float& dx, float& dy, bool mouseMode) {
     dx = 0.f;
     dy = 0.f;
     if (!sixAxisInited) return false;
@@ -251,8 +251,71 @@ bool rightJoyConMotion(float& dx, float& dy) {
     const float ax = state.acceleration.x;
     const float ay = state.acceleration.y;
     const float az = state.acceleration.z;
-    const float glen = std::sqrt(ax * ax + ay * ay + az * az);
 
+    if (mouseMode) {
+        // Pure linear mouse mode (Joy-Con rail resting flat on desk, triggers R/ZR pointing forward).
+        // Rotation (wx, wy, wz) is completely disabled per user instruction.
+        static float gravityY = 0.f;
+        static float gravityZ = 0.f;
+        static float velY = 0.f;
+        static float velZ = 0.f;
+        static bool initialized = false;
+
+        if (!initialized) {
+            gravityY = ay;
+            gravityZ = az;
+            velY = 0.f;
+            velZ = 0.f;
+            initialized = true;
+        }
+
+        // Adapt gravity baseline when resting/stationary
+        const float gyroMag = std::hypot(wx, std::hypot(wy, wz));
+        const float accelMag = std::sqrt(ax * ax + ay * ay + az * az);
+        const bool stationary = (gyroMag < 0.06f && std::abs(accelMag - 1.0f) < 0.07f);
+
+        if (stationary) {
+            gravityY = gravityY * 0.90f + ay * 0.10f;
+            gravityZ = gravityZ * 0.90f + az * 0.10f;
+            velY *= 0.5f;
+            velZ *= 0.5f;
+            if (std::abs(velY) < 0.001f) velY = 0.f;
+            if (std::abs(velZ) < 0.001f) velZ = 0.f;
+        } else {
+            // Very slow drift correction during active sliding
+            gravityY = gravityY * 0.999f + ay * 0.001f;
+            gravityZ = gravityZ * 0.999f + az * 0.001f;
+        }
+
+        float dAy = ay - gravityY;
+        float dAz = az - gravityZ;
+
+        constexpr float kAccelDeadzone = 0.015f;
+        if (std::abs(dAy) < kAccelDeadzone) dAy = 0.f;
+        else dAy = (dAy > 0.f ? dAy - kAccelDeadzone : dAy + kAccelDeadzone);
+
+        if (std::abs(dAz) < kAccelDeadzone) dAz = 0.f;
+        else dAz = (dAz > 0.f ? dAz - kAccelDeadzone : dAz + kAccelDeadzone);
+
+        // Integrate acceleration into linear velocity with friction decay
+        velY = velY * 0.84f + dAy * 9.8f * 0.016f;
+        velZ = velZ * 0.84f + dAz * 9.8f * 0.016f;
+
+        // No gyro terms: pure linear acceleration and velocity scaled for responsive mouse sliding
+        const float mouseDx = -(velZ * 36.0f + dAz * 14.0f);
+        const float mouseDy = -(velY * 36.0f + dAy * 14.0f);
+
+        const float mouseSpeed = std::hypot(mouseDx, mouseDy);
+        if (mouseSpeed < 0.008f) {
+            return false;
+        }
+
+        dx = mouseDx;
+        dy = mouseDy;
+        return true;
+    }
+
+    const float glen = std::sqrt(ax * ax + ay * ay + az * az);
     float upY = 1.f;
     float upZ = 0.f;
     if (glen > 0.1f) {

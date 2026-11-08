@@ -200,6 +200,7 @@ void Store::load() {
         else if (k == "pointerSpeed") pointerSpeed = std::clamp(float(atof(v.c_str())), 0.f, 1.f);
         else if (k == "motionSpeed") motionSpeed = std::clamp(float(atof(v.c_str())), 0.f, 1.f);
         else if (k == "pointerAccel") pointerAccel = v == "1";
+        else if (k == "mouseMode") mouseMode = v == "1";
         else if (k == "frameTimes") frameTimes = v == "1";
         else if (k == "automixModel") automixModel = v;
         else if (k == "modelToasted") modelToasted = v;
@@ -414,7 +415,7 @@ void Store::save() const {
     appendf(f, "customMode=%d\n", customMode);
     appendf(f, "viewPlaylist=%d\nviewFolders=%d\nviewTracks=%d\nlibTab=%d\ntracksSort=%d\ntracksDesc=%d\n", viewPlaylist, viewFolders, viewTracks, libTab,
             tracksSort, tracksDesc);
-    appendf(f, "pointerSpeed=%.2f\nmotionSpeed=%.2f\npointerAccel=%d\nframeTimes=%d\nviewGenre=%d\n", double(pointerSpeed), double(motionSpeed), pointerAccel, frameTimes, viewGenre);
+    appendf(f, "pointerSpeed=%.2f\nmotionSpeed=%.2f\nmouseMode=%d\npointerAccel=%d\nframeTimes=%d\nviewGenre=%d\n", double(pointerSpeed), double(motionSpeed), mouseMode, pointerAccel, frameTimes, viewGenre);
     appendf(f, "keepAwake=%d\ndimAfter=%d\nsleepConsole=%d\n", keepAwake, dimAfter, sleepConsole);
     if (!automixModel.empty()) appendf(f, "automixModel=%s\n", automixModel.c_str());
     if (!modelToasted.empty()) appendf(f, "modelToasted=%s\n", modelToasted.c_str());

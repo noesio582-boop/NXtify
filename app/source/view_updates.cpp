@@ -136,24 +136,28 @@ void App::updateTick() {
         std::string newModel;
         for (const ModelRow& r : modelList())
             if (r.offer >= 0 && !r.downloaded && Updater::modelUsable(updater.models[size_t(r.offer)]) && r.name != store.modelToasted) newModel = r.name;
-        if (updateQuiet) {   // the check at launch: a toast only for a newer version, once each
-            if (updater.error.empty() && n >= 0 && updater.releases[size_t(n)].version != store.updateToasted) {
+        if (updateQuiet) {   // the check at launch: show announcement if an update is available
+            if (updater.error.empty() && n >= 0) {
+                openRelease(n);
                 store.updateToasted = updater.releases[size_t(n)].version;
                 persistSoon(0.3f);
-                toast(Updater::releaseName(store.updateToasted) + " is out: Settings › Updates");
             } else if (!newModel.empty()) {
                 store.modelToasted = newModel;
                 persistSoon(0.3f);
-                toast(newModel + " is available: Settings › Updates");
+                toast(newModel + " " + tr("is available", "esta disponible"));
             }
         } else if (!updater.error.empty()) {
-            toast("Could not check: " + updater.error);
+            toast(tr("Could not check updates: ", "No se pudo comprobar actualizaciones: ") + updater.error);
         } else {
-            toast(n >= 0 ? Updater::releaseName(updater.releases[size_t(n)].version) + " is out" : "NXtify is up to date");
+            if (n >= 0) {
+                openRelease(n);
+            } else {
+                toast(tr("NXtify is up to date", "NXtify esta actualizado"));
+            }
             if (!newModel.empty()) {
                 store.modelToasted = newModel;
                 persistSoon(0.3f);
-                toast(newModel + " is available");
+                toast(newModel + " " + tr("is available", "esta disponible"));
             }
         }
         updateQuiet = false;
@@ -166,13 +170,19 @@ void App::updateTick() {
     }
     backupsAt = -100;
     if (updater.justInstalled) {
-        if (sheet.page == Sheet::Release) closeSheet();
-        toast("Installed " + updater.installed.version + ": restart to finish");
-        settingsCat = SetUpdates;
-        settingsQuery.clear();
-        if (route.view == View::Settings) area("settings.pane").target = 0;
+        closeSheet();
+        confirm(ICON_REFRESH,
+                tr("Update", "Actualizacion"),
+                Updater::releaseName(updater.installed.version),
+                tr("Update installed successfully", "Actualizacion instalada con exito"),
+                tr("Restart NXtify now to apply changes?", "Deseas reiniciar NXtify ahora para aplicar los cambios?"),
+                tr("NXtify will close and restart with the new version.", "NXtify se cerrara y reiniciara con la nueva version."),
+                tr("Restart now", "Reiniciar ahora"),
+                [this] { finishUpdate(); });
+        sheet.askSafe = true;
+        sheet.askYesIcon = ICON_REFRESH;
     } else if (!updater.error.empty()) {
-        toast("Not installed: " + updater.error);
+        toast(tr("Not installed: ", "No se instalo: ") + updater.error);
     }
 }
 
@@ -191,9 +201,9 @@ void App::updateSheetHeader(const char*& icon, std::string& kick, std::string& t
     const UpdRelease& r = updater.releases[size_t(sheet.recipe)];
     const int cmp = Updater::compare(r.version, Updater::thisVersion());
     icon = cmp > 0 ? ICON_DOWNLOAD : cmp < 0 ? ICON_HISTORY : ICON_CHECK;
-    kick = std::string(r.beta ? "Beta · " : "") + (cmp > 0 ? "Newer" : cmp < 0 ? "Earlier version" : "This version");
+    kick = std::string(r.beta ? "Beta · " : "") + (cmp > 0 ? tr("New update available", "Nueva actualizacion disponible") : cmp < 0 ? tr("Earlier version", "Version anterior") : tr("This version", "Version actual"));
     title = Updater::releaseName(r.version);
-    sub = longDate(r.date) + " · " + megabytes(r.zipSize) + (r.manifest ? "" : " · without in-app updates");
+    sub = r.date + (r.zipSize > 0 ? " · " + megabytes(r.zipSize) : "");
 }
 
 void App::updateSheetRows(std::vector<SheetRow>& rows) {
@@ -214,32 +224,40 @@ void App::updateSheetRows(std::vector<SheetRow>& rows) {
     };
     // ---- what it does: one action, or what is going on
     if (updater.busy()) {
-        rows.push_back({ Row::Action, ICON_HOURGLASS, updater.working() == r.version ? updateStatus() : "Busy with " + updater.working(),
-                         "Settings › Updates shows how far", "", nullptr });
+        rows.push_back({ Row::Action, ICON_HOURGLASS, updater.working() == r.version ? updateStatus() : tr("Busy...", "Ocupado..."),
+                         tr("Updating in progress", "Actualizacion en curso"), "", nullptr });
     } else {
-        const std::string label = cmp > 0 ? "Install " + r.version : cmp < 0 ? "Go back to " + r.version : "Install " + r.version + " again";
-        const std::string sub = cmp > 0   ? GF_UPDATE_WHAT
-                              : cmp < 0   ? (r.manifest ? "Your settings are backed up first" : "Your settings are backed up first; back from it by hand")
-                                          : "Puts this version's files back as they were released";
+        const std::string label = cmp > 0 ? tr("Update now to ", "Actualizar ahora a ") + r.version : cmp < 0 ? tr("Go back to ", "Volver a ") + r.version : tr("Reinstall ", "Reinstalar ") + r.version;
+        const std::string sub = cmp > 0   ? tr("Download and apply the update", "Descargar y aplicar la actualizacion")
+                              : cmp < 0   ? tr("Your settings are backed up first", "Tus ajustes se respaldan primero")
+                                          : tr("Puts this version's files back as they were released", "Restaura los archivos de esta version");
         rows.push_back({ Row::Action, cmp > 0 ? ICON_DOWNLOAD : cmp < 0 ? ICON_HISTORY : ICON_REFRESH, label, sub, megabytes(r.zipSize),
-                         [this, i] { installRelease(i); } });
+                         [this, i] {
+                             closeSheet();
+                             updater.install(i, false, backupRoot());
+                         } });
     }
     rows.back().h = 62;
     if (r.beta)
-        text(ICON_BOLT, "A beta: it can be unstable and have bugs. Please report what you find: " ISSUES_URL, true);
-    if (!r.manifest)
-        text(ICON_INFO, r.version + " cannot update itself (it has no Updates page). To come back later, copy a newer release from "
-                            "github.com/noesio582-boop/NXtify/releases to " GF_THE_CARD " by hand; your settings are backed up first.", true);
-    // ---- the changelog
+        text(ICON_BOLT, tr("A beta: it can be unstable and have bugs. Please report what you find.", "Una beta: puede ser inestable y tener errores. Por favor reporta cualquier problema."), true);
+
+    // ---- the changelog / novedades
+    rows.push_back({ Row::Group, nullptr, tr("What's new", "Novedades") });
+    rows.back().h = 38;
     if (r.log.empty()) {
-        rows.push_back({ Row::Group, nullptr, "What's new" });
-        rows.back().h = 38;
-        text(nullptr, "This release has no notes.");
-    }
-    for (const UpdLog& sec : r.log) {
-        rows.push_back({ Row::Group, changelogIcon(sec.icon), sec.title });
-        rows.back().h = 40;
-        for (const UpdItem& it : sec.items) text(changelogIcon(it.icon), it.text);
+        if (!r.body.empty()) {
+            text(nullptr, r.body);
+        } else {
+            text(nullptr, tr("This release has no notes.", "Esta version no contiene notas."));
+        }
+    } else {
+        for (const UpdLog& sec : r.log) {
+            if (!sec.title.empty()) {
+                rows.push_back({ Row::Group, changelogIcon(sec.icon), sec.title });
+                rows.back().h = 40;
+            }
+            for (const UpdItem& it : sec.items) text(changelogIcon(it.icon), it.text);
+        }
     }
 }
 
