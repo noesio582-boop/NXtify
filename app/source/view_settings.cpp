@@ -690,13 +690,19 @@ void App::drawSettings(float x, float y, float w, float h) {
         }
         const Row speedRow = sliderRow(tr("Pointer speed", "Velocidad del puntero"), pct(store.pointerSpeed * 2),
                                        tr("The left stick moves a pointer; A taps under it", "El stick izquierdo mueve un puntero; A selecciona bajo el"), "set.ptrspeed", store.pointerSpeed);
+        const Row motionToggleRow = toggleRow(tr("Motion pointer control", "Control por movimiento"),
+                                              tr("Aim with the right Joy-Con when Joy-Cons are detached", "Apunta con el Joy-Con derecho al desacoplar los mandos"),
+                                              "set.motionpointer", store.motionPointer);
         const Row motionSpeedRow = sliderRow(tr("Motion pointer speed", "Velocidad del puntero por movimiento"), pct(store.motionSpeed * 2),
                                              tr("Sensitivity when aiming with the right Joy-Con", "Sensibilidad al apuntar con el Joy-Con derecho"), "set.motionspeed", store.motionSpeed);
         const Row accelRow = toggleRow(tr("Pointer acceleration", "Aceleracion del puntero"), tr("Slow for small moves, fast when the stick is pushed all the way", "Lento para movimientos cortos, rapido al inclinar el stick al maximo"),
                                        "set.ptraccel", store.pointerAccel);
+        std::vector<Row> pointerRows = { speedRow, motionToggleRow };
+        if (store.motionPointer) pointerRows.push_back(motionSpeedRow);
+        pointerRows.push_back(accelRow);
         sections.push_back({ tr("Controls", "Controles"), ICON_SLIDERS,
                              { { tr("Buttons", "Botones"), keys },
-                               { tr("Pointer", "Puntero"), { speedRow, motionSpeedRow, accelRow } },
+                               { tr("Pointer", "Puntero"), pointerRows },
                                { tr("Touch", "Pantalla tactil"), { infoRow(tr("Touch works everywhere", "La pantalla tactil funciona en toda la app"), tr("Tap, drag lists with momentum, drag the seek bar and the volume", "Toca, desliza listas con inercia, arrastra la barra de progreso y el volumen")) } } } });
     }
 

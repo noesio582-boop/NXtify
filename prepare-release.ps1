@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$appVersion = "0.9.5"
+$appVersion = "0.9.6"
 $overlayVersion = "0.5.0"
 $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
 $releaseRoot = Join-Path $projectRoot "release"

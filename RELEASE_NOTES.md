@@ -1,26 +1,23 @@
-# NXtify 0.9.5 / Overlay 0.5.0
+# NXtify 0.9.6 / Overlay 0.5.0
 
-## Novedades en NXtify 0.9.5
+## Novedades en NXtify 0.9.6
 
-- **Sistema de Actualizaciones OTA (Over-The-Air)**:
-  - Busqueda automatica de actualizaciones activada por defecto al iniciar la aplicacion.
-  - Al detectar una nueva version, muestra un anuncio en pantalla con las novedades y opcion de actualizar inmediatamente.
-  - Al completar la descarga y aplicacion de la actualizacion, solicita reiniciar la aplicacion para aplicar los cambios de inmediato.
-  - Nuevo apartado en **Configuracion > Actualizaciones** con estado de actualizaciones, comprobacion manual, selector de versiones beta y lista de versiones disponibles.
-- **Control de puntero por movimiento con Joy-Con desacoplado**:
-  - Control de cursor mediante giroscopio del Joy-Con derecho al desacoplar los mandos.
-  - Recentrado de puntero rapido presionando R3 (stick derecho).
-  - Sensibilidad y aceleracion calibradas para maxima precision y comodidad.
-- **Traducciones completas al español** en todas las secciones nuevas y ajustes del sistema.
+- **Opcion para deshabilitar control por movimiento**:
+  - Nuevo interruptor en **Configuracion > Controles > Puntero** para activar o desactivar el control por movimiento de los Joy-Con.
+  - Al desactivar el control por movimiento, el puntero se puede controlar con el stick izquierdo incluso con los Joy-Con desacoplados de la consola.
+- **Correccion critica del actualizador OTA**:
+  - Corregido el fallo en la creacion de copias de seguridad durante la actualizacion que provocaba el mensaje "Could not back up config/NXtify: nothing was changed".
+  - La ruta de respaldos ahora se ubica en `sdmc:/config/NXtify-backups/` fuera de la carpeta principal para evitar recursiones.
+  - Se excluyen del respaldo las carpetas de cache pesadas (`artwork-cache`, `lyrics-cache`) y archivos de registro activos, haciendo el proceso de actualizacion instantaneo y fiable.
 
 ## Opciones de descarga
 
-- `NXtify-v0.9.5-SD-Package.zip` — Paquete completo Todo en Uno (NRO, Overlay y Sysmodule).
-- `NXtify-0.9.5.zip` — Aplicacion NRO independiente.
+- `NXtify-v0.9.6-SD-Package.zip` — Paquete completo Todo en Uno (NRO, Overlay y Sysmodule).
+- `NXtify-0.9.6.zip` — Aplicacion NRO independiente.
 - `NXtify.nro` — Binario ejecutable individual.
 - `NXtify.ovl` — Overlay Tesla individual.
 - `NXtify-Overlay-0.5.0.zip` — Overlay y reproductor en segundo plano.
-- `NXtify-source-0.9.5.zip` — Codigo fuente completo.
+- `NXtify-source-0.9.6.zip` — Codigo fuente completo.
 - `SHA256SUMS.txt` — Sumas de verificacion SHA-256.
 - Complete multi-thousand-track Liked Songs and playlist sessions with Play
   All, session caching, and only 100 interface rows materialized at once.

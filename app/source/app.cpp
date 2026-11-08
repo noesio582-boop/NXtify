@@ -818,7 +818,7 @@ void App::input() {
     const float mag = std::hypot(float(ls.x), float(ls.y)) / 32767.f;
     const bool joyConDetached = plat::isJoyConDetached();
     float mdx = 0.f, mdy = 0.f;
-    if (joyConDetached && plat::rightJoyConMotion(mdx, mdy)) {
+    if (store.motionPointer && joyConDetached && plat::rightJoyConMotion(mdx, mdy)) {
         if (pointer.idle > Pointer::Hide) {
             const SDL_FRect r = ui.rectOf(ui.focusedId());
             pointer.x = r.w > 0 ? r.x + r.w / 2 : css::W / 2.f;
@@ -832,7 +832,7 @@ void App::input() {
 #endif
         pointer.idle = 0;
         pointerMoved = true;
-    } else if (!joyConDetached && mag > 0.15f) {
+    } else if (mag > 0.15f) {
         if (pointer.idle > Pointer::Hide) {
             // It appears where the focus is, so the eye does not have to look for it.
             const SDL_FRect r = ui.rectOf(ui.focusedId());
