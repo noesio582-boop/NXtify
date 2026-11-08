@@ -29,6 +29,25 @@
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <b>Library & Playlists</b><br>
+  <img src="images/screenshot_playlist.jpg" alt="Library and Playlists View" width="850">
+</p>
+
+<p align="center">
+  <b>Now Playing & Audio Spectrum Visualizer</b><br>
+  <img src="images/screenshot_now_playing.jpg" alt="Now Playing with Spectrum Visualizer" width="850">
+</p>
+
+<p align="center">
+  <b>Synchronized Lyrics (Canvas Mode)</b><br>
+  <img src="images/screenshot_lyrics.jpg" alt="Full-Screen Synced Lyrics" width="850">
+</p>
+
+---
+
 ## Features
 
 ### Full-Screen Application (`NXtify.nro`)
