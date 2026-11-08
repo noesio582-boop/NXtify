@@ -11,9 +11,7 @@
 #include <cstring>
 #include <mutex>
 
-#ifndef GF_VERSION
-#define GF_VERSION "2.0.0 BETA 1"
-#endif
+#include "version.hpp"
 
 namespace net {
 namespace {

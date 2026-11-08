@@ -31,6 +31,10 @@ function Reset-ReleaseDirectory {
 }
 
 if (-not $SkipBuild) {
+    $appBuildDir = Join-Path $projectRoot "app\build"
+    if (Test-Path -LiteralPath $appBuildDir) {
+        Remove-Item -LiteralPath $appBuildDir -Recurse -Force
+    }
     & (Join-Path $projectRoot "build-app.ps1") -Jobs $Jobs
     if ($LASTEXITCODE -ne 0) { throw "Standalone NRO build failed" }
     & (Join-Path $projectRoot "build-phase2-engine.ps1") -Jobs $Jobs
