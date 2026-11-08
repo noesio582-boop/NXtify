@@ -119,14 +119,14 @@ bool copyFile(const std::string& from, const std::string& to) {
     return ok;
 }
 
-/** Copies a folder, leaving out the names in skip (at its top only). */
+/** Copies a folder, leaving out the names in skip. */
 bool copyTree(const std::string& from, const std::string& to, const std::vector<std::string>& skip, int64_t& bytes, int& files) {
     mkdirs(to);
     bool ok = true;
     for (const auto& n : names(from)) {
         if (std::find(skip.begin(), skip.end(), n) != skip.end()) continue;
         const std::string a = join(from, n), b = join(to, n);
-        if (isDir(a)) ok = copyTree(a, b, {}, bytes, files) && ok;
+        if (isDir(a)) ok = copyTree(a, b, skip, bytes, files) && ok;
         else if (copyFile(a, b)) { bytes += std::max<int64_t>(0, fileSize(b)); files++; }
         else ok = false;
     }
@@ -1251,12 +1251,14 @@ std::string Updater::backupNow(const std::string& root, const std::string& note)
     const std::string backup = join(root, stamp() + " " + thisVersion() + (version ? " before " : " ") + note);
     int64_t bytes = 0;
     int files = 0;
-    // Left out: the downloads, and caches Gatefold makes again by itself (the overlay's covers, the tag cache)
-    // (art/ is the covers cache: thousands of small files, and copying them took the console a minute and a half)
-    if (!copyTree(dir_, backup, { "updates", "thumbs", "art", "tags.tsv" }, bytes, files)) {
-        removeTree(backup);
-        return {};
-    }
+    // Left out: downloads, caches (art, thumbs, artwork-cache, lyrics-cache), logs, and backups directory
+    const std::vector<std::string> skip = {
+        "updates", "backups", "thumbs", "art", "artwork-cache", "lyrics-cache",
+        "tags.tsv", "app.log", "background.log", "app.log.previous", "background.log.previous",
+        "log.txt", "background-ready.log"
+    };
+    mkdirs(backup);
+    copyTree(dir_, backup, skip, bytes, files);
     writeAll(join(backup, "gatefold-backup.txt"), "from=" + thisVersion() + "\nto=" + note + "\ndate=" + stamp() + "\n");
     return backup;
 }
