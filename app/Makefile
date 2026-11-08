@@ -44,7 +44,7 @@ DATA		:=	data
 INCLUDES	:=	source platform/switch sysmodule/include ../phase2/ipc-client/include ../phase2/common/include ../vendor/cspot/include ../vendor/cspot/pregen ../vendor/cspot/pregen/protobuf ../vendor/cspot/bell/main ../vendor/cspot/bell/main/utilities/include ../vendor/cspot/bell/main/io/include ../vendor/cspot/bell/main/platform ../vendor/cspot/bell/main/audio-dsp/include ../vendor/cspot/bell/main/audio-containers/include ../vendor/cspot/bell/main/audio-codec/include ../vendor/cspot/bell/external/nanopb ../vendor/cspot/bell/external/cJSON ../vendor/cspot/bell/external/mdnssvc ../vendor/cspot/bell/external/nlohmann_json/include ../vendor/cspot/bell/external/nlohmann_json/single_include ../vendor/cspot/bell/external/fmt/include
 APP_TITLE	:=	NXtify
 APP_AUTHOR	:=	noesio582-boop
-APP_VERSION	:=	0.9.0
+APP_VERSION	:=	0.9.5
 ROMFS	:=	romfs
 
 #---------------------------------------------------------------------------------

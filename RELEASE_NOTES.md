@@ -1,63 +1,27 @@
-# NXtify 0.7.1 / Overlay 0.5.0
+# NXtify 0.9.5 / Overlay 0.5.0
 
-NXtify is a native, controller-first Spotify client for Nintendo Switch
-homebrew, created by **HiroshiYamauchi**.
+## Novedades en NXtify 0.9.5
 
-This maintenance release fixes standalone shutdown ordering and safely handles
-the failing Sphaira application-forwarder return path. The overlay remains at
-0.5.0 and is byte-for-byte unchanged.
+- **Sistema de Actualizaciones OTA (Over-The-Air)**:
+  - Busqueda automatica de actualizaciones activada por defecto al iniciar la aplicacion.
+  - Al detectar una nueva version, muestra un anuncio en pantalla con las novedades y opcion de actualizar inmediatamente.
+  - Al completar la descarga y aplicacion de la actualizacion, solicita reiniciar la aplicacion para aplicar los cambios de inmediato.
+  - Nuevo apartado en **Configuracion > Actualizaciones** con estado de actualizaciones, comprobacion manual, selector de versiones beta y lista de versiones disponibles.
+- **Control de puntero por movimiento con Joy-Con desacoplado**:
+  - Control de cursor mediante giroscopio del Joy-Con derecho al desacoplar los mandos.
+  - Recentrado de puntero rapido presionando R3 (stick derecho).
+  - Sensibilidad y aceleracion calibradas para maxima precision y comodidad.
+- **Traducciones completas al español** en todas las secciones nuevas y ajustes del sistema.
 
-## Standalone NRO 0.7.1 changes
+## Opciones de descarga
 
-- Cancels and joins authenticated browse, search, collection, and artwork work
-  before Borealis destroys its activity tree, sync queue, texture cache, and
-  Switch platform services.
-- Disconnects the Spotify playback session only after dependent workers have
-  stopped, and interrupts active libcurl transfers immediately during exit.
-- When Sphaira itself is hosted by an application forwarder, exits safely to
-  the Switch HOME screen through NXtify's still-valid applet self-controller.
-  Returning through Sphaira's HBL after the child NRO has been unloaded fails
-  in Sphaira's late `appletOE` exit path.
-- NXtify runtime logs, Sphaira logs, and Atmosphere crash reports confirm that
-  NXtify's engine, workers, playback session, artwork pipeline, and platform
-  services have completely shut down before that upstream HBL failure occurs.
-- HBMenu, applet-mode Sphaira, and direct NXtify forwarder launches retain
-  their normal exit behavior.
-
-## Download choices
-
-- `NXtify-0.7.1.zip` — standalone full-screen NRO.
-- `NXtify-Overlay-0.5.0.zip` — independent Ultrahand overlay plus dormant
-  Atmosphère background service.
-- `NXtify-source-0.7.1.zip` — complete corresponding source and vendored
-  dependencies for both products.
-- `SHA256SUMS.txt` — checksums for all three archives.
-
-## Installation
-
-For the standalone app, extract `NXtify-0.7.1.zip` to the SD root and launch
-NXtify through title override. On first run, open Spotify on a phone connected
-to the same network and select **NXtify** from the device picker.
-
-Install the overlay only after the NRO has authenticated successfully. Stop an
-older NXtify service, extract `NXtify-Overlay-0.5.0.zip` to the SD root, and
-reboot once so Atmosphère discovers the replacement. Opening the overlay then
-starts its dormant service automatically.
-
-The NRO and overlay remain independent playback engines. If both are left
-running deliberately, they can produce two overlapping audio streams.
-
-## Standalone NRO 0.7 series highlights
-
-- Full lyrics view with a fixed current/upcoming-line panel, timestamps, and
-  active-row highlighting when Spotify supplies Musixmatch line timing.
-- Optional line-synced lyrics directly inside the full player, enabled by
-  default and updated during normal playback or seeking.
-- Black, animated RGB Gradient, and animated RGB Solid full-player
-  backgrounds. RGB Solid is the default; the normal Now Playing tab remains
-  unchanged.
-- Followed podcast shows in Home and Your Library, with authenticated,
-  paginated playable episode lists and podcast-aware labels.
+- `NXtify-v0.9.5-SD-Package.zip` — Paquete completo Todo en Uno (NRO, Overlay y Sysmodule).
+- `NXtify-0.9.5.zip` — Aplicacion NRO independiente.
+- `NXtify.nro` — Binario ejecutable individual.
+- `NXtify.ovl` — Overlay Tesla individual.
+- `NXtify-Overlay-0.5.0.zip` — Overlay y reproductor en segundo plano.
+- `NXtify-source-0.9.5.zip` — Codigo fuente completo.
+- `SHA256SUMS.txt` — Sumas de verificacion SHA-256.
 - Complete multi-thousand-track Liked Songs and playlist sessions with Play
   All, session caching, and only 100 interface rows materialized at once.
 - Large player, podcast, and collection artwork now uses Spotify's largest

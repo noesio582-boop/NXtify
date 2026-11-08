@@ -818,16 +818,13 @@ void App::input() {
     const float mag = std::hypot(float(ls.x), float(ls.y)) / 32767.f;
     const bool joyConDetached = plat::isJoyConDetached();
     float mdx = 0.f, mdy = 0.f;
-    if (joyConDetached && plat::rightJoyConMotion(mdx, mdy, store.mouseMode)) {
+    if (joyConDetached && plat::rightJoyConMotion(mdx, mdy)) {
         if (pointer.idle > Pointer::Hide) {
             const SDL_FRect r = ui.rectOf(ui.focusedId());
             pointer.x = r.w > 0 ? r.x + r.w / 2 : css::W / 2.f;
             pointer.y = r.w > 0 ? r.y + r.h / 2 : css::H / 2.f;
         }
-        float motionScale = (0.2f + 1.6f * store.motionSpeed) * 5600.f;   // px per radian
-        if (store.mouseMode) {
-            motionScale *= 2.8f;   // Accelerated speed dedicated to mouse mode
-        }
+        const float motionScale = (0.2f + 1.6f * store.motionSpeed) * 5600.f;   // px per radian
         pointer.x = std::clamp(pointer.x + mdx * motionScale * dt, 0.f, float(css::W - 1));
         pointer.y = std::clamp(pointer.y + mdy * motionScale * dt, 0.f, float(css::H - 1));
 #ifdef GF_WINDOWED
@@ -885,16 +882,13 @@ void App::input() {
             down &= ~uint64_t(plat::BtnA | plat::BtnB);
         }
     }
-    const bool mouseClickDown = (store.mouseMode && joyConDetached && pointing && (down & plat::BtnZR));
-    const bool mouseClickHeld = (store.mouseMode && joyConDetached && pointing && (held & plat::BtnZR));
-    const bool clickDown = (pointing && (down & plat::BtnA)) || mouseClickDown;
-    const bool clickHeld = (held & plat::BtnA) || mouseClickHeld;
+    const bool clickDown = pointing && (down & plat::BtnA);
+    const bool clickHeld = held & plat::BtnA;
 
     if (clickDown) {
         ui.touchDown(pointer.x, pointer.y);
         ui.setPadMode(true);
         pointer.down = true;
-        if (mouseClickDown) down &= ~uint64_t(plat::BtnZR);
     } else if (pointer.down && !clickHeld) {
         ui.touchUp(pointer.x, pointer.y);
         pointer.down = false;

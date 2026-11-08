@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$appVersion = "0.9.0"
+$appVersion = "0.9.5"
 $overlayVersion = "0.5.0"
 $projectRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path
 $releaseRoot = Join-Path $projectRoot "release"
@@ -84,6 +84,22 @@ $publicOverlayZip = Join-Path $releaseRoot (
     "NXtify-Overlay-{0}.zip" -f $overlayVersion)
 Copy-Item -LiteralPath $overlayZip -Destination $publicOverlayZip -Force
 
+# All-in-One SD package combining app, overlay, and background sysmodule.
+$aioStage = Reset-ReleaseDirectory (Join-Path $releaseRoot ".aio-stage")
+$aioAppDir = Join-Path $aioStage "switch\NXtify"
+New-Item -ItemType Directory -Force -Path $aioAppDir | Out-Null
+Copy-Item -LiteralPath $nro -Destination (Join-Path $aioAppDir "NXtify.nro")
+Expand-Archive -LiteralPath $overlayZip -DestinationPath $aioStage -Force
+$sdPackageZip = Join-Path $releaseRoot ("NXtify-v{0}-SD-Package.zip" -f $appVersion)
+Compress-Archive -Path (Join-Path $aioStage "*") -DestinationPath $sdPackageZip -Force
+# Copy standalone unzipped files to release directory
+Copy-Item -LiteralPath $nro -Destination (Join-Path $releaseRoot "NXtify.nro") -Force
+$stagedOvl = Join-Path $aioStage "switch\.overlays\NXtify.ovl"
+if (Test-Path -LiteralPath $stagedOvl) {
+    Copy-Item -LiteralPath $stagedOvl -Destination (Join-Path $releaseRoot "NXtify.ovl") -Force
+}
+Remove-Item -LiteralPath $aioStage -Recurse -Force
+
 # Clean, buildable source snapshot. Copy only product sources and their exact
 # vendored dependencies; development logs, old candidates, SD data, build
 # trees, crash artifacts, and the private handover never enter this tree.
@@ -116,8 +132,10 @@ foreach ($file in @(".gitattributes", ".gitignore", "CHANGELOG.md",
                      "build-phase2-engine.ps1", "deploy-app.ps1",
                      "prepare-release.ps1", "resolve-spotify-hashes.py",
                      "symbolicate-crash.ps1")) {
-    Copy-Item -LiteralPath (Join-Path $projectRoot $file) `
-        -Destination $sourceStage
+    $filePath = Join-Path $projectRoot $file
+    if (Test-Path -LiteralPath $filePath) {
+        Copy-Item -LiteralPath $filePath -Destination $sourceStage
+    }
 }
 
 foreach ($component in @("phase2\overlay", "phase2\probe",
@@ -160,7 +178,9 @@ Remove-Item -LiteralPath $sourceStage -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "RELEASE_NOTES.md") `
     -Destination (Join-Path $releaseRoot "RELEASE_NOTES.md") -Force
 
-$hashTargets = @($appZip, $publicOverlayZip, $sourceZip)
+$releaseNro = Join-Path $releaseRoot "NXtify.nro"
+$releaseOvl = Join-Path $releaseRoot "NXtify.ovl"
+$hashTargets = @($sdPackageZip, $appZip, $publicOverlayZip, $releaseNro, $releaseOvl, $sourceZip) | Where-Object { Test-Path -LiteralPath $_ }
 $hashLines = foreach ($file in $hashTargets) {
     $hash = Get-FileHash -LiteralPath $file -Algorithm SHA256
     "{0}  {1}" -f $hash.Hash.ToLowerInvariant(), (Split-Path $file -Leaf)

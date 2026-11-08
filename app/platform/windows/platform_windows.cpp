@@ -219,7 +219,7 @@ Stick stick(int which) {
 }
 
 bool isJoyConDetached() { return false; }
-bool rightJoyConMotion(float& dx, float& dy, bool mouseMode) { (void)mouseMode; dx = 0.f; dy = 0.f; return false; }
+bool rightJoyConMotion(float& dx, float& dy) { dx = 0.f; dy = 0.f; return false; }
 
 // ---- typing
 

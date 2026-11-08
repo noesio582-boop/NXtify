@@ -80,26 +80,26 @@ const char* App::changelogIcon(const std::string& name) const {
 std::string App::updateStatus() const {
     const int64_t d = updater.done(), t = updater.total();
     switch (updater.phase()) {
-    case Updater::Checking: return "Asking GitHub for the releases…";
+    case Updater::Checking: return tr("Asking GitHub for releases...", "Consultando GitHub...");
     case Updater::Downloading:
-        return "Downloading " + updater.working() + (t > 0 ? " · " + megabytes(d).substr(0, megabytes(d).size() - 3) + " of " + megabytes(t) : std::string());
-    case Updater::Verifying: return "Checking the download" + (t > 0 ? " · " + std::to_string(int(d * 100 / std::max<int64_t>(1, t))) + "%" : std::string());
-    case Updater::Unpacking: return "Unpacking · " + std::to_string(d) + " of " + std::to_string(t) + " files";
-    case Updater::BackingUp: return "Backing up your settings";
-    case Updater::Installing: return "Putting the new files in place";
+        return tr("Downloading ", "Descargando ") + updater.working() + (t > 0 ? " · " + megabytes(d).substr(0, megabytes(d).size() - 3) + tr(" of ", " de ") + megabytes(t) : std::string());
+    case Updater::Verifying: return tr("Checking download", "Verificando descarga") + (t > 0 ? " · " + std::to_string(int(d * 100 / std::max<int64_t>(1, t))) + "%" : std::string());
+    case Updater::Unpacking: return tr("Unpacking · ", "Desempaquetando · ") + std::to_string(d) + tr(" of ", " de ") + std::to_string(t) + tr(" files", " archivos");
+    case Updater::BackingUp: return tr("Backing up your settings", "Respaldando ajustes");
+    case Updater::Installing: return tr("Putting the new files in place", "Instalando archivos nuevos");
     default: return {};
     }
 }
 
 /** Updates are off until allowed here: what going online means, said before anything does. */
 void App::allowUpdates() {
-    confirm(UPD_SHIELD, "Updates", "Connect to the internet?", "GitHub · noesio582-boop/NXtify", "Allow NXtify to go online?",
-            "NXtify connects to GitHub only when you check for updates or install one, and at launch if you turn that on. "
-            "GitHub sees " GF_YOUR_CONSOLE "'s IP address and NXtify's version, nothing else. You can turn this off at any time.",
-            "Allow", [this] {
+    confirm(UPD_SHIELD, tr("Updates", "Actualizaciones"), tr("Connect to the internet?", "Conectar a internet?"), "GitHub · noesio582-boop/NXtify", tr("Allow NXtify to go online?", "Permitir a NXtify conectarse?"),
+            tr("NXtify connects to GitHub only when you check for updates or install one, and at launch if enabled. GitHub sees your IP address and NXtify version, nothing else.",
+               "NXtify se conecta a GitHub solo para buscar actualizaciones o instalar una, y al iniciar si esta activado. GitHub ve tu direccion IP y la version de NXtify, nada mas."),
+            tr("Allow", "Permitir"), [this] {
                 store.updates = 1;
                 persistSoon(0.3f);
-                toast("Updates allowed: NXtify goes online only when you ask");
+                toast(tr("Updates allowed", "Actualizaciones permitidas"));
             });
     sheet.askSafe = true;
     sheet.askYesIcon = ICON_CHECK;
@@ -107,18 +107,17 @@ void App::allowUpdates() {
 
 /** Beta versions are asked for first: what a beta is, its risks, and to report bugs (the user, 2026-10-29). */
 void App::allowBetas() {
-    confirm(ICON_BOLT, "Updates", "Beta versions", "New features, before they are released", "Try beta versions?",
-            "Betas let you try new features early. They can be unstable and have bugs: something may not work, or may stop "
-            "working, until the release. Please report the bugs you find: " ISSUES_URL ". Your settings are backed up before "
-            "every install, and you can go back to a release from here.",
-            "Turn on", [this] {
+    confirm(ICON_BOLT, tr("Updates", "Actualizaciones"), tr("Beta versions", "Versiones beta"), tr("New features before release", "Nuevas funciones antes del lanzamiento"), tr("Try beta versions?", "Probar versiones beta?"),
+            tr("Betas let you try new features early. They can be unstable and have bugs. Your settings are backed up before every install.",
+               "Las versiones beta te permiten probar novedades antes de su lanzamiento. Pueden ser inestables y tener errores. Tus ajustes se respaldan antes de instalar."),
+            tr("Turn on", "Activar"), [this] {
                 store.betas = true;
                 persistSoon(0.3f);
-                toast("Beta versions on: listed apart in Settings › Updates");
+                toast(tr("Beta versions enabled", "Versiones beta activadas"));
             });
     sheet.askSafe = true;
     sheet.askYesIcon = ICON_BOLT;
-    sheet.askWarn = "Beta versions can be unstable and have bugs. Please report them.";
+    sheet.askWarn = tr("Beta versions can be unstable and have bugs.", "Las versiones beta pueden ser inestables y tener errores.");
 }
 
 void App::checkUpdates(bool quiet) {
@@ -363,27 +362,30 @@ void App::modelSheetRows(std::vector<SheetRow>& rows) {
 
 void App::installRelease(int i) {
     if (!store.updates) { allowUpdates(); return; }
-    if (updater.busy()) { toast("Wait for " + updater.working() + " first"); return; }
+    if (updater.busy()) { toast(tr("Wait for ", "Espera a que termine ") + updater.working()); return; }
     if (i < 0 || i >= int(updater.releases.size())) return;
     const UpdRelease& r = updater.releases[size_t(i)];
     const std::string me = Updater::thisVersion();
     const int cmp = Updater::compare(r.version, me);
-    std::string text = "Your settings are backed up first. Then " GF_UPDATE_PARTS "; "
-                       "Restart now finishes it (the music stops for a moment).";
+    std::string text = tr("Your settings are backed up first. Then files are downloaded and updated; restarting NXtify finishes it.",
+                          "Tus ajustes se respaldan primero. Luego se descargan y actualizan los archivos; reiniciar NXtify completa la instalacion.");
     if (cmp < 0) {
-        text += " Your playlists, Liked and edits stay. Start fresh clears the settings when NXtify closes; the backup keeps them.";
+        text += tr(" Your playlists and Liked stay.", " Tus playlists y Me gusta se conservan.");
     }
 
-    confirm(cmp > 0 ? ICON_DOWNLOAD : cmp < 0 ? ICON_HISTORY : ICON_REFRESH, cmp > 0 ? "Update" : cmp < 0 ? "Go back" : "Install again",
-            Updater::releaseName(r.version), longDate(r.date) + " · " + megabytes(r.zipSize),
-            cmp > 0 ? "Install " + r.version + "?" : cmp < 0 ? "Go back to " + r.version + "?" : "Install " + r.version + " again?", text,
-            cmp < 0 ? "Keep my settings" : "Install", [this, i] { updater.install(i, false, backupRoot()); });
+    confirm(cmp > 0 ? ICON_DOWNLOAD : cmp < 0 ? ICON_HISTORY : ICON_REFRESH,
+            cmp > 0 ? tr("Update", "Actualizacion") : cmp < 0 ? tr("Go back", "Volver") : tr("Install again", "Reinstalar"),
+            Updater::releaseName(r.version), r.date + (r.zipSize > 0 ? " · " + megabytes(r.zipSize) : ""),
+            cmp > 0 ? tr("Install ", "Instalar ") + r.version + "?" : cmp < 0 ? tr("Go back to ", "Volver a ") + r.version + "?" : tr("Install ", "Instalar ") + r.version + tr(" again?", " de nuevo?"),
+            text,
+            cmp < 0 ? tr("Keep settings", "Mantener ajustes") : tr("Install", "Instalar"),
+            [this, i] { updater.install(i, false, backupRoot()); });
     sheet.askSafe = true;
     sheet.askYesIcon = cmp < 0 ? ICON_HISTORY : ICON_DOWNLOAD;
-    if (!r.manifest) sheet.askWarn = r.version + " cannot update itself. Coming back to a newer version is by hand.";
-    else if (r.beta) sheet.askWarn = "A beta can be unstable and have bugs. Please report them.";
+    if (!r.manifest) sheet.askWarn = tr("Coming back to a newer version will be manual.", "Volver a una version mas reciente requerira copia manual.");
+    else if (r.beta) sheet.askWarn = tr("A beta can be unstable and have bugs.", "Una version beta puede ser inestable.");
     if (cmp < 0) {
-        sheet.askAlt = "Start fresh";
+        sheet.askAlt = tr("Start fresh", "Inicio limpio");
         sheet.askAltYes = [this, i] { updater.install(i, true, backupRoot()); };
     }
 }

@@ -692,14 +692,11 @@ void App::drawSettings(float x, float y, float w, float h) {
                                        tr("The left stick moves a pointer; A taps under it", "El stick izquierdo mueve un puntero; A selecciona bajo el"), "set.ptrspeed", store.pointerSpeed);
         const Row motionSpeedRow = sliderRow(tr("Motion pointer speed", "Velocidad del puntero por movimiento"), pct(store.motionSpeed * 2),
                                              tr("Sensitivity when aiming with the right Joy-Con", "Sensibilidad al apuntar con el Joy-Con derecho"), "set.motionspeed", store.motionSpeed);
-        const Row mouseModeRow = toggleRow(tr("Mouse mode (Beta)", "Modo mouse (Beta)"),
-                                           tr("Use the right Joy-Con on a surface with the rail down, like a mouse; ZR or A clicks", "Usa el Joy-Con derecho sobre una superficie con el rail hacia abajo, como un mouse; ZR o A hace clic"),
-                                           "set.mousemode", store.mouseMode);
         const Row accelRow = toggleRow(tr("Pointer acceleration", "Aceleracion del puntero"), tr("Slow for small moves, fast when the stick is pushed all the way", "Lento para movimientos cortos, rapido al inclinar el stick al maximo"),
                                        "set.ptraccel", store.pointerAccel);
         sections.push_back({ tr("Controls", "Controles"), ICON_SLIDERS,
                              { { tr("Buttons", "Botones"), keys },
-                               { tr("Pointer", "Puntero"), { speedRow, motionSpeedRow, mouseModeRow, accelRow } },
+                               { tr("Pointer", "Puntero"), { speedRow, motionSpeedRow, accelRow } },
                                { tr("Touch", "Pantalla tactil"), { infoRow(tr("Touch works everywhere", "La pantalla tactil funciona en toda la app"), tr("Tap, drag lists with momentum, drag the seek bar and the volume", "Toca, desliza listas con inercia, arrastra la barra de progreso y el volumen")) } } } });
     }
 

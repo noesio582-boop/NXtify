@@ -96,7 +96,6 @@ struct Store {
     float pointerSpeed = 0.2f;   // Settings shows it doubled: 40%
     float motionSpeed = 0.5f;
     bool pointerAccel = true;
-    bool mouseMode = false;
     bool frameTimes = false;        // Settings → About: the frame-time graph
     int heldOrder = -1;             // Shuffle, set aside while an Automix playlist plays (App::holdOrderForAutomix); -1 none
     std::string automixModel;       // the Automix model by its name ("Automix V1.2.0"): Settings › Updates › Automix models (a
