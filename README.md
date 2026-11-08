@@ -20,7 +20,7 @@
 
 ## Overview
 
-**NXtify** brings cloud music streaming and background playback to the Nintendo Switch with a hardware-accelerated 60 fps interface inspired by **Songate** and **Gatefold**. It consists of two complementary components:
+**NXtify** brings cloud music streaming and background playback to the Nintendo Switch with a hardware-accelerated 60 fps interface. It consists of two complementary components:
 
 | Component | File | Purpose |
 | --- | --- | --- |
