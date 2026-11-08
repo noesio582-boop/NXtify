@@ -1,0 +1,43 @@
+<brls:AppletFrame
+    iconInterpolation="linear"
+    headerHidden="true"
+    footerHidden="false">
+
+    <brls:Box
+        axis="column"
+        width="100%"
+        height="100%"
+        backgroundColor="#0A0C0F">
+
+        <brls:TabFrame
+            title="Spotify"
+            icon="@res/icon/icon.jpg"
+            grow="1.0">
+
+            <brls:Tab label="Inicio">
+                <HomeTab />
+            </brls:Tab>
+
+            <brls:Tab label="Buscar">
+                <SearchTab />
+            </brls:Tab>
+
+            <brls:Tab label="Tu Biblioteca">
+                <LibraryTab />
+            </brls:Tab>
+
+            <brls:Tab label="Reproduciendo">
+                <NowPlayingTab />
+            </brls:Tab>
+
+            <brls:Tab label="Ajustes">
+                <SettingsTab />
+            </brls:Tab>
+
+        </brls:TabFrame>
+
+        <MiniPlayer />
+
+    </brls:Box>
+
+</brls:AppletFrame>

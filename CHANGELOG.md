@@ -1,0 +1,299 @@
+# Changelog
+
+All notable NXtify changes are documented here. Standalone NRO and overlay
+versions are tracked independently because they are separate applications.
+
+## Standalone NRO 0.7.1 — 2026-08-19
+
+### Fixed
+
+- Fixed a shutdown race exposed by returning to Sphaira while Home, Library,
+  search, or artwork requests were still running. NXtify now cancels and joins
+  its network workers before Borealis destroys its activity tree, threading
+  queue, texture cache, and Switch platform services.
+- Reordered Spotify teardown so authenticated browse workers finish before the
+  playback session and token dependencies are disconnected. Active libcurl
+  transfers are now interrupted immediately during exit instead of delaying or
+  racing the launcher handoff.
+- Added a safe-exit fallback for Sphaira running from an application forwarder.
+  After completing normal cleanup, NXtify asks Horizon to close the current
+  application through its still-valid applet self-controller instead of
+  returning through Sphaira's failing HBL `appletOE` proxy path. Applet-mode
+  Sphaira, HBMenu, and standalone NXtify launches are unchanged.
+- Confirmed through NXtify runtime logs, Sphaira logs, and Atmosphere crash
+  reports that NXtify's engine, workers, playback session, artwork pipeline,
+  and platform services are fully stopped before the remaining Sphaira/HBL
+  failure. The application-forwarder workaround therefore exits to HOME rather
+  than reporting a launcher failure as a NXtify crash.
+
+## Standalone NRO 0.7.0 — 2026-08-19
+
+### Added
+
+- Added Spotify lyrics to Now Playing, including a controller-scrollable full
+  text view, timestamps, a live current/upcoming-line panel, and active-row
+  highlighting when Spotify supplies Musixmatch line timing.
+- Added optional line-synced lyrics directly to the full player. This is
+  enabled by default and follows playback and seeking in real time.
+- Added Black, animated RGB Gradient, and animated RGB Solid full-player
+  backgrounds. RGB Solid is the default; these modes never alter the normal
+  Now Playing tab.
+- Added followed podcast shows through Spotify's native `Podcasts & Shows`
+  library filter, with dedicated Home/Library surfaces and paginated playable
+  episode lists.
+- Added a small session lyrics cache so reopening the player does not repeat a
+  Spotify lyrics request for the same track.
+
+### Changed
+
+- Restored complete Liked Songs and playlist sessions, including Play All.
+  Multi-thousand-track collections remain cached after their first load while
+  only 100 interface rows are materialized at once.
+- Large Now Playing, full-player, and collection artwork now retain Spotify's
+  largest supplied image instead of being forced through the 300-pixel card
+  endpoint. Small cards remain bandwidth-conscious.
+- Removed unused AAC, MP3, ALAC, and Opus decoder paths. NXtify explicitly
+  requests Spotify's 160 or 320 kbps OGG Vorbis streams, so this reduces the
+  NRO image and working set without removing a selectable format.
+- Improved podcast terminology throughout collection and playback surfaces so
+  podcast items are consistently described as episodes rather than songs.
+
+### Fixed
+
+- Podcast episode loading now uses Spotify's authenticated partner endpoint,
+  avoiding the public API rate-limit loop that could leave a show empty.
+- Hardened Shuffle/Repeat state publication and queue updates so the visible
+  player state cannot silently diverge from the native playback engine.
+- Preserved loaded dashboards, libraries, collections, and artwork across tab
+  changes instead of needlessly re-fetching them.
+
+## Overlay and background service 0.5.0 — 2026-08-19
+
+### Added
+
+- Added followed podcasts under Your Library with paginated playable episodes.
+- Added host coverage for coalescing explicit playback-state commands while
+  the native engine is busy.
+
+### Fixed
+
+- Restored compatibility with Nintendo 64 Nintendo Switch Online by reducing
+  persistent heap, decoder, socket, and artwork resource pressure.
+- Liked Songs and playlists no longer wait for up to 1,000 serially fetched
+  tracks. The browser fetches 50 remotely paged tracks at a time and retains a
+  bounded 100-track playback window.
+- The overlay retries automatic service launch four times with bounded
+  backoff, supervises unexpected Dormant transitions, and keeps browsing
+  requests from killing or indefinitely wedging the service.
+- Loading pages always retain a local B-button escape, and overlay browsing
+  runs away from Ultrahand's render thread.
+- Search and browser input is claimed exclusively by the overlay instead of
+  leaking button presses into the game or application behind Ultrahand.
+- Play/Pause now sends an explicit target state rather than a stale toggle;
+  queued Play/Pause, seek, volume, Shuffle, Repeat, and quality changes retain
+  only their newest requested state.
+- Closing Ultrahand releases overlay-owned artwork, network, and IPC resources
+  before control returns to the foreground title, then reconnects cleanly the
+  next time the overlay is shown.
+- Centered decoded artwork within the player frame and moved the volume
+  percentage above its slider while keeping the Volume label aligned with the
+  bar.
+
+### Changed
+
+- Applied the lightweight runtime work to the artwork-enabled release: a
+  bounded fixed heap, Vorbis-only decoding, smaller catalog caches, remote
+  collection paging, and a 100-track playback window.
+- Made cover-art networking just-in-time. Cached JPEGs use no overlay BSD
+  session; a cache miss claims one session only for the download, releases it
+  immediately, discards the encoded buffer after decoding, and retains only
+  the currently drawable RGBA cover.
+- Kept the service dormant at boot and audout lazy until actual playback, so
+  browsing alone does not reserve an audio output path.
+
+## Standalone NRO 0.6.3 — 2026-08-16
+
+### Fixed
+
+- Shuffle now reorders the queue that is already playing while retaining the
+  current stream. Previously the control changed its icon/state but was only
+  consulted the next time a playlist was started.
+- Repeat One now rebuilds the current track immediately after every natural
+  end instead of being checked only when the complete queue was exhausted.
+- Repeat All now wraps the native queue directly after its last track instead
+  of using a delayed UI-layer restart that could race end-of-playback cleanup.
+
+## Overlay and background service 0.4.3 — 2026-08-16
+
+- Shares the corrected live Shuffle queue and native Repeat All/Repeat One
+  implementation with the standalone playback engine.
+
+## Standalone NRO 0.6.2 — 2026-08-16
+
+### Added
+
+- Persistent output volume shared with the background service. The last volume
+  selected in either interface is restored on the next session instead of
+  returning to 80%.
+- Normal (Spotify 160 kbps Vorbis) and High (Spotify 320 kbps Vorbis) streaming
+  quality choices in Settings. A quality change applies the next time that
+  playback engine starts.
+- Playback diagnostics for slow CDN reads and recovered PCM underruns.
+
+### Changed
+
+- Replaced the proof-of-concept linear sample-rate conversion with a compact
+  windowed-sinc 44.1 kHz-to-48 kHz converter and a float-first audio path to
+  reduce subtle conversion noise and repeated rounding.
+- Increased decoded PCM and CDN buffering to better absorb short network or
+  scheduler stalls.
+- Expanded the in-app Changelog into a controller-scrollable history covering
+  every standalone, overlay, and Phase-2 development milestone.
+
+## Overlay and background service 0.4.2 — 2026-08-16
+
+- Shares the persistent output-volume and Normal/High quality settings with the
+  standalone NRO.
+- Reduces overlay pages to 25 items, trims background catalog duplication,
+  keeps only the useful lightweight browse categories, and lowers artwork
+  decode/transfer limits.
+- Uses the improved resampler, playback buffers, and CDN/underrun diagnostics
+  from the standalone audio path.
+- Raises the shared IPC API minor version and advertises the new audio-settings
+  capability without breaking older major-version clients.
+
+## Standalone NRO 0.6.1 — 2026-08-15
+
+### Fixed
+
+- Restored catalog search to Spotify's authenticated `searchDesktop`
+  Pathfinder query. Search no longer consumes the public Web API rate-limit
+  bucket and still returns songs, artists, albums, playlists, podcasts, and
+  episodes for the filter chips.
+- Replaced the overflowing About and Changelog dialogs with full-screen,
+  controller-scrollable pages. B and the visible Back button both return to
+  Settings.
+
+## Overlay and background service 0.4.1 — 2026-08-15
+
+- Shares the corrected Pathfinder catalog search used by the standalone app.
+- Updates release/version markers without changing the hardware-tested 0.4.0
+  playback, IPC, memory, socket, or audio profile.
+
+## Standalone NRO 0.6.0 — 2026-08-15
+
+### Added
+
+- Home filters for All, Music, and Podcasts.
+- Saved podcast cards and paginated playable show episodes.
+- Search filters for Songs, Artists, Albums, Playlists, and Podcasts.
+- Search results for playlists, shows, and individual episodes.
+- Creator credit and an in-app changelog in Settings.
+- New dark-theme NXtify icon supplied by HiroshiYamauchi.
+
+### Fixed
+
+- Library save/remove requests now send Spotify URIs in both the query and JSON
+  payload, matching the current generic library API behavior.
+- The liked-state lookup can no longer overwrite a newer heart mutation.
+- Successful heart mutations are verified against Spotify before remaining
+  visually committed.
+
+## Overlay and background service 0.4.0 — 2026-08-15
+
+- Retains the stable 0.3.9 player, numeric volume slider, tri-state repeat,
+  paused session restoration, and on-demand dormant-service behavior.
+- Incorporates the updated shared browse model and public release metadata.
+- Keeps the 4 MiB Applet-pool heap, lazy audout, and two-session TCP-only
+  compatibility profile.
+
+Known issue: Nintendo 64 Nintendo Switch Online games do not start while the
+NXtify background service is resident, even when playback is paused. Stop the
+service before opening that application.
+
+## Standalone NRO 0.5.3 — 2026-08-15
+
+- Added paged Liked Songs and long Now Playing sessions.
+- Restored responsive controller navigation and retained loaded content between
+  tabs rather than re-fetching it on every visit.
+
+## Standalone NRO 0.5.0–0.5.2 — 2026-08-15
+
+- Added font-independent shuffle, previous, play/pause, next, and repeat
+  artwork; Off/All/One repeat modes; live liked-state UI; optional Y/L/R/ZL/ZR
+  shortcuts; and a persistent three-band equalizer.
+
+## Standalone NRO 0.4.9 — 2026-08-15
+
+- Restored the last track, playlist, and position as paused metadata. Opening
+  NXtify no longer starts audio without an explicit Play command.
+
+## Standalone NRO 0.4.x — 2026-08-14 to 2026-08-15
+
+- Added persistent artwork caching, an inline playlist beneath Now Playing,
+  Plus-button theater mode, Minus-button screen-off playback, symbolic player
+  controls, and reliable B-button navigation.
+
+## Standalone NRO 0.3.x — 2026-08-14
+
+- Expanded Home, Search, Your Library, albums, playlists, queue, resumable
+  playlist contexts, pagination, and local playback-session tracking.
+
+## Standalone NRO 0.2.2 — 2026-08-14
+
+- Fixed stale Borealis focus crashes, added safe retry focus, bounded Spotify
+  access-point failover, and restored missing system UI assets.
+
+## Standalone NRO 0.2.1 — 2026-08-14
+
+- Serialized connection replacement and packet writes, protected Mercury
+  callbacks, and prevented reconnect-time null-pointer crashes.
+
+## Standalone NRO 0.2.0 — 2026-08-14
+
+- Introduced the five-section Borealis interface, persistent mini-player,
+  personalized Home, private library access, artwork workers, loading/error
+  states, and on-device/file diagnostics.
+
+## Standalone NRO 0.1.0 — 2026-08-14
+
+- Established phone-assisted Spotify authentication, cached credentials,
+  native CDN streaming/decryption/Vorbis decoding, audout playback, transport
+  controls, basic search, and clean shutdown.
+
+## Overlay and background service 0.3.9 — 2026-08-15
+
+- Added a visible numeric volume slider and Off/All/One repeat modes.
+
+## Overlay and background service 0.3.8 — 2026-08-15
+
+- Reduced the service to two TCP-only BSD sessions and removed unused UDP
+  reservations. Hardware testing confirmed that the N64 compatibility issue
+  remained.
+
+## Overlay and background service 0.3.7 — 2026-08-15
+
+- Moved the service to the Applet memory pool and made audout acquisition lazy
+  until the first decoded PCM frame.
+
+## Overlay and background service 0.3.6 — 2026-08-15
+
+- Restored the proven 4 MiB heap, playback buffers, browse caches, and local B
+  escape from loading views after the withdrawn 0.3.5 experiment.
+
+## Overlay and background service 0.3.5 — withdrawn
+
+- Withdrawn after hardware tests found silent playback, infinite collection
+  loading, and a trapped Ultrahand navigation state.
+
+## Overlay and background service 0.3.0–0.3.4 — 2026-08-14
+
+- Established the independent Ultrahand interface, versioned CMIF IPC, dormant
+  Atmosphère service, native playback over games, artwork, Spotify browsing,
+  queue controls, and large-library pages.
+
+## Phase-2 probes 0.1.x–0.2.x — 2026-08-14
+
+- Validated service discovery, on-demand launch behavior, IPC health,
+  Atmosphère packaging, and the first background audio path before the
+  production overlay was introduced.
