@@ -60,22 +60,33 @@
 
 ## Installation & Setup Instructions
 
-### 1. Installing the Standalone App & Overlay
+### Quick Install (Recommended: All-in-One SD Package)
 
-Download the latest release assets from the [**Releases**](https://github.com/noesio582-boop/NXtify/releases) page and place them on your Switch SD card:
+Download **`NXtify-v0.8.0-SD-Package.zip`** from the [**Releases**](https://github.com/noesio582-boop/NXtify/releases) page and extract its contents directly to the root of your Switch SD card (`sdmc:/`).
 
+It places everything in the exact paths required:
 ```text
 sdmc:/
-├── switch/
-│   ├── NXtify/
-│   │   └── NXtify.nro
-│   └── .overlays/
-│       └── NXtify.ovl
-└── config/
-    └── NXtify/
+├── atmosphere/
+│   └── contents/
+│       └── 4200000000535754/
+│           ├── exefs.nsp
+│           └── toolbox.json
+└── switch/
+    ├── NXtify/
+    │   └── NXtify.nro
+    └── .overlays/
+        └── NXtify.ovl
 ```
 
-*(If you also install the optional background sysmodule archive `NXtify-Overlay-0.5.0.zip`, extract it to the root of your SD card so `sdmc:/atmosphere/contents/4200000000535754/exefs.nsp` is placed in `atmosphere/contents/`, then reboot your console once.)*
+Reboot your console once after extracting so Atmosphère loads the background audio sysmodule.
+
+### Manual / Individual Install
+
+If you prefer placing components individually:
+- Copy `NXtify.nro` to `sdmc:/switch/NXtify/NXtify.nro`.
+- Copy `NXtify.ovl` to `sdmc:/switch/.overlays/NXtify.ovl`.
+- If you want in-game background playback, place `exefs.nsp` and `toolbox.json` under `sdmc:/atmosphere/contents/4200000000535754/`.
 
 ### 2. Linking Your Account (First-Time Setup)
 
