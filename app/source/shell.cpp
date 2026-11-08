@@ -536,14 +536,12 @@ void App::drawSidebar() {
         g.setFade(fade0 * labA);
         // the header opens the Playlists page (all of them, and their order); lit while it shows
         const Id hid = uid("nav.playlists");
-        const float hw = w - 36;
+        const float hw = w - 12;
         if (ui.item(hid, { x0, y, hw, 24 }, 7)) navigate(View::Playlists);
         const bool here = v == View::Playlists, hot = ui.pressed(hid) || (ui.focused(hid) && ui.showFocusRing());
         if (here) g.roundRect(x0, y, hw, 24, 7, pal.accent, 0.09f);
         else if (hot) g.roundRect(x0, y, hw, 24, 7, pal.text, ui.pressed(hid) ? 0.11f : 0.065f);
         kicker("Playlists", x0 + 12, y + 12, here ? pal.accentInk : hot ? pal.text2 : pal.text3, 0.08f);
-        hint(uid("nav.newpl"), tr("New playlist", "Nueva playlist"));
-        if (iconButton(uid("nav.newpl"), ICON_PLUS, x0 + w - 12, y + 12, false, 24, 14)) openNewList();   // your own, or a smart one
         g.setFade(fade0);
         y += 28 * labA;
     }

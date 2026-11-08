@@ -197,6 +197,7 @@ void padRead() {
             { SDL_CONTROLLER_BUTTON_Y, BtnY },           { SDL_CONTROLLER_BUTTON_LEFTSHOULDER, BtnL }, { SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, BtnR },
             { SDL_CONTROLLER_BUTTON_START, BtnPlus },    { SDL_CONTROLLER_BUTTON_BACK, BtnMinus },    { SDL_CONTROLLER_BUTTON_DPAD_LEFT, BtnLeft },
             { SDL_CONTROLLER_BUTTON_DPAD_UP, BtnUp },    { SDL_CONTROLLER_BUTTON_DPAD_RIGHT, BtnRight }, { SDL_CONTROLLER_BUTTON_DPAD_DOWN, BtnDown },
+            { SDL_CONTROLLER_BUTTON_LEFTSTICK, BtnStickL }, { SDL_CONTROLLER_BUTTON_RIGHTSTICK, BtnStickR },
         };
         for (const auto& [from, to] : map) if (SDL_GameControllerGetButton(padDev, from)) b |= to;
         if (SDL_GameControllerGetAxis(padDev, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > 12000) b |= BtnZL;
@@ -216,6 +217,9 @@ Stick stick(int which) {
     const int y = SDL_GameControllerGetAxis(padDev, which ? SDL_CONTROLLER_AXIS_RIGHTY : SDL_CONTROLLER_AXIS_LEFTY);
     return { std::clamp(x, -32767, 32767), std::clamp(-y, -32767, 32767) };   // SDL's down is positive, the app's up
 }
+
+bool isJoyConDetached() { return false; }
+bool rightJoyConMotion(float& dx, float& dy) { dx = 0.f; dy = 0.f; return false; }
 
 // ---- typing
 

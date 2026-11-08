@@ -112,7 +112,7 @@ void App::drawTrackList(float x, float y, float w, float h) {
         const Font bf{ css::Sm, Weight::SemiBold };
         auto bw = [&](const char* label) { return 16 + 24 + g.measure(label, bf) + 16 + 8.f; };
         float need = bw("Play") + (noShuffle ? 0 : bw("Shuffle"));
-        if (v == View::Queue) need += bw("Current track") + bw("Clear");
+        if (v == View::Queue) need += bw("Current track");
         else if (v == View::Search) need += bw("New search");
         else if (ownPage && !store.playlists[ref].folder()) need += bw("Delete") + bw("Rename") + (store.playlists[ref].automix ? bw("Order again") : 0);
         else if (ref >= 0) need += bw("Open folder") + bw("Delete");
@@ -153,12 +153,6 @@ void App::drawTrackList(float x, float y, float w, float h) {
             sa.target = headH + listRowY(listLayout(tracks, w, mode), cur) - (h - RowH) / 2;
             sa.clamp();
             listJump = uid("pl.r", cur);
-        }
-        if (!tracks.empty()) {
-            if (action("pl.clear", ICON_X, tr("Clear", "Vaciar"))) {
-                queueClear();
-                toast(tr("Cleared the playlist", "Playlist vaciada"));
-            }
         }
     } else if (v == View::Search) {
         if (action("pl.search", ICON_SEARCH, tr("New search", "Nueva busqueda"))) openSearch();

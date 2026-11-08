@@ -350,36 +350,6 @@ void App::drawSheet() {
                               store.save();
                               toast(liked ? ::tr("Removed from Liked", "Quitado de Tus me gusta") : ::tr("Added to Liked", "Agregado a Tus me gusta"));
                           } });
-        items.push_back({ ICON_TAG, ::tr("Edit tags…", "Editar etiquetas…"), store.edits.count(tr.path) ? ::tr("Edited", "Editado") : "", [this, t] {
-                              sheet.draft.clear();
-                              for (const auto& [k, l] : kFields) sheet.draft[k] = fieldOf(lib.tracks[t], k);
-                              sheet.page = Sheet::Tags;
-                              ui.focusDefault();
-                          } });
-        items.push_back({ ICON_IMAGE, ::tr("Change the cover…", "Cambiar portada…"), store.covers.count(tr.path) ? ::tr("Yours", "Tuya") : "", [this, t] {
-                              sheet.page = Sheet::Cover;
-                              sheet.wholeAlbum = lib.tracks[t].albumIdx >= 0;
-                              // Settings → Storage and reset may name a folder of covers; else the track's own
-                              struct stat st;
-                              const bool own = !store.coverDir.empty() && stat(store.coverDir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
-                              listCoverDir(own ? store.coverDir : lib.tracks[t].folder);
-                          } });
-        if (store.covers.count(tr.path))
-            items.push_back({ ICON_REFRESH, ::tr("Use the original cover", "Usar la portada original"), "", [this, t] {
-                                  // for every track of the album that shares this cover
-                                  const std::string mine = store.covers[lib.tracks[t].path];
-                                  std::vector<int> group{ t };
-                                  if (lib.tracks[t].albumIdx >= 0) group = lib.albums[lib.tracks[t].albumIdx].tracks;
-                                  for (int i : group)
-                                      if (auto it = store.covers.find(lib.tracks[i].path); it != store.covers.end() && it->second == mine) {
-                                          store.covers.erase(it);
-                                          meta.setCoverFile(i, "");
-                                      }
-                                  store.saveEdits();
-                                  if (now.track >= 0 && std::find(group.begin(), group.end(), now.track) != group.end()) loadTrackCoverAgain();
-                                  toast(::tr("Original cover back", "Portada original restaurada"));
-                              } });
-        if (store.edits.count(tr.path)) items.push_back({ ICON_REFRESH, ::tr("Undo my tag edits", "Deshacer cambios de etiquetas"), "", [this, t] { undoTagEdits(t); } });
         if (tr.albumIdx >= 0)
             items.push_back({ ICON_GRID, ::tr("Go to the album", "Ir al album"), lib.albums[tr.albumIdx].title, [this, a = tr.albumIdx] { closeSheet(); goToAlbum(a); } });
         items.push_back({ ICON_MIC, ::tr("Go to the artist", "Ir al artista"), tr.artist, [this, a = tr.artist] { closeSheet(); openArtist(a); } });
@@ -432,61 +402,15 @@ void App::drawSheet() {
         info(::tr("Title", "Titulo"), tr.title);
         info(::tr("Artist", "Artista"), tr.artist);
         info(::tr("Album", "Album"), tr.album);
-        info(::tr("Album artist", "Artista del album"), tr.albumArtist);
         info(::tr("Genre", "Genero"), tr.genre);
         info(::tr("Year", "Ano"), tr.date);
-        info(::tr("Track", "Pista"), tr.trackNo ? std::to_string(tr.trackNo) : "");
-        if (tr.path.rfind("spotify:", 0) == 0) {
-            info(::tr("Format", "Formato"), "NXtify Connect");
-            info(::tr("Duration", "Duracion"), fmtTime(tr.duration > 0 ? tr.duration : in.duration));
-            info(::tr("Source", "Origen"), "NXtify");
-            info(::tr("Cover", "Portada"), "Online");
-        } else {
-            std::string fmt = in.codec.empty() ? "Audio" : in.codec;
-            info(::tr("Format", "Formato"), fmt);
-            info(::tr("Duration", "Duracion"), fmtTime(tr.duration > 0 ? tr.duration : in.duration));
-        }
+        info(::tr("Duration", "Duracion"), fmtTime(tr.duration > 0 ? tr.duration : in.duration));
         info(::tr("Lyrics", "Letras"), !now.lyrics.empty() ? (now.synced ? std::string(::tr("Synced (", "Sincronizadas (")) + now.lyricsSource + ")" : std::string(::tr("Text (", "Texto (")) + now.lyricsSource + ")") : ::tr("Unavailable", "No disponibles"));
         if (const auto it = store.lyricNudge.find(tr.path); it != store.lyricNudge.end()) {   // the timing control (Now playing, the Canvas)
             char b[64];
             snprintf(b, sizeof b, ::tr("%.1f s %s, kept by NXtify", "%.1f s %s, guardado por NXtify"), double(std::fabs(it->second)), it->second > 0 ? ::tr("later", "despues") : ::tr("earlier", "antes"));
             info(::tr("Lyrics timing", "Sincronia de letras"), b);
         }
-        info(::tr("Your edits", "Tus ediciones"), store.edits.count(tr.path) ? ::tr("Yes, kept by NXtify; the file is unchanged", "Si, guardadas por NXtify") : "");
-        // Volume levelling (levels.hpp)
-        if (const Level* lv = levels.find(tr.path); lv && !std::isnan(lv->lufs)) {
-            char b[64];
-            snprintf(b, sizeof b, "%.1f LUFS, peak %.1f dBTP", double(lv->lufs), 20 * std::log10(std::max(1e-6, double(lv->peak))));
-            std::string v = b;
-            if (store.levelMode) {
-                snprintf(b, sizeof b, " · %+.1f dB here", levelDb(t));
-                v += b;
-            }
-            info(::tr("Loudness", "Sonoridad"), v);
-        } else {
-            info(::tr("Loudness", "Sonoridad"), lv ? ::tr("Could not be measured", "No se pudo medir") : ::tr("Not measured yet", "Aun no medida"));
-        }
-        // Automix's analysis (mixan.hpp), made with the loudness
-        if (const Level* lv = levels.find(tr.path); lv && lv->mix.seconds != 0) {
-            char b[64];
-            if (lv->mix.bpm > 0 && lv->mix.confidence >= 0.5f) snprintf(b, sizeof b, "%.0f", double(lv->mix.bpm));
-            else if (lv->mix.bpm > 0) snprintf(b, sizeof b, "About %.0f (no steady beat for Automix)", double(lv->mix.bpm));
-            else snprintf(b, sizeof b, "No steady beat");
-            info("BPM", b);
-            if (lv->mix.key >= 0)   // the key, and its place on the Camelot wheel (Automix v2)
-                info(::tr("Key", "Tono"), (lv->mix.keySure >= 0.5f ? "" : "Perhaps ") + mixan::keyName(lv->mix.key) + " (" + mixan::camelot(lv->mix.key) + ")");
-        }
-        // Play statistics (stats.hpp)
-        auto when = [](int64_t t) {
-            char buf[32];
-            const std::time_t tt = std::time_t(t);
-            std::strftime(buf, sizeof buf, "%d %b %Y", std::localtime(&tt));
-            return std::string(buf);
-        };
-        const PlayStat* ps = stats.find(tr.path);
-        info(::tr("Plays", "Reproducciones"), ps && ps->plays ? std::to_string(ps->plays) : ::tr("Not played yet", "Aun no reproducida"));
-        if (ps && ps->last) info(::tr("Last played", "Ultima vez"), when(ps->last));
-        if (ps && ps->added) info(::tr("Added", "Agregada"), when(ps->added));
         info(::tr("URI", "URI"), tr.path);
     }
 

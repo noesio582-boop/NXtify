@@ -94,6 +94,7 @@ struct Store {
     float canvasVizTime = 0.9f;     // seconds the progress line takes to grow into the spectrum
     // Settings → Controls: the left stick's pointer. Speed 0..1 (0.5 is 0.6's pace); acceleration: slow near the centre, fast at the edge
     float pointerSpeed = 0.2f;   // Settings shows it doubled: 40%
+    float motionSpeed = 0.5f;
     bool pointerAccel = true;
     bool frameTimes = false;        // Settings → About: the frame-time graph
     int heldOrder = -1;             // Shuffle, set aside while an Automix playlist plays (App::holdOrderForAutomix); -1 none

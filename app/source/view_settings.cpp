@@ -666,14 +666,16 @@ void App::drawSettings(float x, float y, float w, float h) {
                                                             { "F11  ·  Alt Enter", tr("Full screen", "Pantalla completa") },
                                                             { "Right-click  ·  Menu", tr("Track menu", "Menu de la cancion") },
                                                             { "Arrows  ·  D-pad", tr("Move around", "Navegar") },
-                                                            { "Wheel  ·  right stick", tr("Scroll", "Desplazar") } };
+                                                            { "Wheel  ·  right stick", tr("Scroll", "Desplazar") },
+                                                            { "R3", tr("Recenter pointer", "Recentrar cursor") } };
 #else
         const std::pair<const char*, const char*> map[] = { { "A", tr("Select", "Seleccionar") },           { "B", tr("Back", "Atras") },        { "X", tr("Play / pause", "Reproducir / pausar") },
                                                             { "Y", tr("Search", "Buscar") },           { "L  R", tr("Previous / next track", "Cancion anterior / siguiente") },
                                                             { "ZL  ZR", tr("Seek 10 seconds", "Adelantar / retroceder 10 s") }, { "−", tr("Canvas (full screen)", "Canvas (pantalla completa)") },
                                                             { "+", tr("Track menu", "Menu de la cancion") },
                                                             { "HOME", tr("Leave NXtify (close it from the HOME menu)", "Salir de NXtify (cerrar desde el menu HOME)") },
-                                                            { tr("Right stick", "Stick derecho"), tr("Scroll", "Desplazar") } };
+                                                            { tr("Right stick", "Stick derecho"), tr("Scroll", "Desplazar") },
+                                                            { "R3", tr("Recenter pointer", "Recentrar cursor") } };
 #endif
         for (auto& [k, l] : map) {
             const Font f{ css::Sm, Weight::SemiBold };
@@ -688,11 +690,13 @@ void App::drawSettings(float x, float y, float w, float h) {
         }
         const Row speedRow = sliderRow(tr("Pointer speed", "Velocidad del puntero"), pct(store.pointerSpeed * 2),
                                        tr("The left stick moves a pointer; A taps under it", "El stick izquierdo mueve un puntero; A selecciona bajo el"), "set.ptrspeed", store.pointerSpeed);
+        const Row motionSpeedRow = sliderRow(tr("Motion pointer speed", "Velocidad del puntero por movimiento"), pct(store.motionSpeed * 2),
+                                             tr("Sensitivity when aiming with the right Joy-Con", "Sensibilidad al apuntar con el Joy-Con derecho"), "set.motionspeed", store.motionSpeed);
         const Row accelRow = toggleRow(tr("Pointer acceleration", "Aceleracion del puntero"), tr("Slow for small moves, fast when the stick is pushed all the way", "Lento para movimientos cortos, rapido al inclinar el stick al maximo"),
                                        "set.ptraccel", store.pointerAccel);
         sections.push_back({ tr("Controls", "Controles"), ICON_SLIDERS,
                              { { tr("Buttons", "Botones"), keys },
-                               { tr("Pointer", "Puntero"), { speedRow, accelRow } },
+                               { tr("Pointer", "Puntero"), { speedRow, motionSpeedRow, accelRow } },
                                { tr("Touch", "Pantalla tactil"), { infoRow(tr("Touch works everywhere", "La pantalla tactil funciona en toda la app"), tr("Tap, drag lists with momentum, drag the seek bar and the volume", "Toca, desliza listas con inercia, arrastra la barra de progreso y el volumen")) } } } });
     }
 

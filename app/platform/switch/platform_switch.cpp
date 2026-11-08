@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
@@ -19,6 +20,7 @@
 namespace plat {
 
 static_assert(u64(BtnA) == u64(HidNpadButton_A) && u64(BtnB) == u64(HidNpadButton_B) && u64(BtnX) == u64(HidNpadButton_X) && u64(BtnY) == u64(HidNpadButton_Y));
+static_assert(u64(BtnStickL) == u64(HidNpadButton_StickL) && u64(BtnStickR) == u64(HidNpadButton_StickR));
 static_assert(u64(BtnL) == u64(HidNpadButton_L) && u64(BtnR) == u64(HidNpadButton_R) && u64(BtnZL) == u64(HidNpadButton_ZL) && u64(BtnZR) == u64(HidNpadButton_ZR));
 static_assert(u64(BtnPlus) == u64(HidNpadButton_Plus) && u64(BtnMinus) == u64(HidNpadButton_Minus));
 static_assert(u64(BtnLeft) == u64(HidNpadButton_Left) && u64(BtnUp) == u64(HidNpadButton_Up) && u64(BtnRight) == u64(HidNpadButton_Right) && u64(BtnDown) == u64(HidNpadButton_Down));
@@ -28,6 +30,9 @@ namespace {
 constexpr u64 kBgProgram = 0x4200000000535754ull;
 
 PadState pad;
+HidSixAxisSensorHandle sixAxisHandles[4]{};
+HidSixAxisSensorHandle sixAxisRightSingle{};
+bool sixAxisInited = false;
 AppletHookCookie cookie{};
 LeaveFn leaveFn = nullptr;
 void* leaveArg = nullptr;
@@ -127,6 +132,14 @@ void init() {
 
 void quit() {
     LOG("plat::quit start");
+    if (sixAxisInited) {
+        hidStopSixAxisSensor(sixAxisHandles[0]);
+        hidStopSixAxisSensor(sixAxisHandles[1]);
+        hidStopSixAxisSensor(sixAxisHandles[2]);
+        hidStopSixAxisSensor(sixAxisHandles[3]);
+        hidStopSixAxisSensor(sixAxisRightSingle);
+        sixAxisInited = false;
+    }
     if (nifmInited) { nifmExit(); nifmInited = false; }
     if (lblInited) { lblExit(); lblInited = false; }
     if (psmInited) { psmExit(); psmInited = false; }
@@ -175,6 +188,18 @@ bool legacyData() { return true; }
 void padInit() {
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&pad);
+
+    hidGetSixAxisSensorHandles(&sixAxisHandles[0], 1, HidNpadIdType_Handheld, HidNpadStyleTag_NpadHandheld);
+    hidGetSixAxisSensorHandles(&sixAxisHandles[1], 1, HidNpadIdType_No1,      HidNpadStyleTag_NpadFullKey);
+    hidGetSixAxisSensorHandles(&sixAxisHandles[2], 2, HidNpadIdType_No1,      HidNpadStyleTag_NpadJoyDual);
+    hidGetSixAxisSensorHandles(&sixAxisRightSingle, 1, HidNpadIdType_No1,      HidNpadStyleTag_NpadJoyRight);
+
+    hidStartSixAxisSensor(sixAxisHandles[0]);
+    hidStartSixAxisSensor(sixAxisHandles[1]);
+    hidStartSixAxisSensor(sixAxisHandles[2]);
+    hidStartSixAxisSensor(sixAxisHandles[3]);
+    hidStartSixAxisSensor(sixAxisRightSingle);
+    sixAxisInited = true;
 }
 void padRead() { padUpdate(&pad); }
 uint64_t padDown() { return padGetButtonsDown(&pad); }
@@ -182,6 +207,72 @@ uint64_t padHeld() { return padGetButtons(&pad); }
 Stick stick(int which) {
     const HidAnalogStickState s = padGetStickPos(&pad, which);
     return { s.x, s.y };
+}
+
+bool isJoyConDetached() {
+    const u32 style = padGetStyleSet(&pad);
+    if (style & HidNpadStyleTag_NpadHandheld) return false;
+    const u32 attr = padGetAttributes(&pad);
+    if (attr & HidNpadAttribute_IsRightWired) return false;
+    if (style & (HidNpadStyleTag_NpadJoyDual | HidNpadStyleTag_NpadJoyRight)) return true;
+    if ((attr & HidNpadAttribute_IsRightConnected) && !(style & HidNpadStyleTag_NpadFullKey)) return true;
+    return false;
+}
+
+bool rightJoyConMotion(float& dx, float& dy) {
+    dx = 0.f;
+    dy = 0.f;
+    if (!sixAxisInited) return false;
+
+    const u32 style = padGetStyleSet(&pad);
+    HidSixAxisSensorHandle handle{};
+    bool hasHandle = false;
+    if (style & HidNpadStyleTag_NpadJoyDual) {
+        handle = sixAxisHandles[3];
+        hasHandle = true;
+    } else if (style & HidNpadStyleTag_NpadJoyRight) {
+        handle = sixAxisRightSingle;
+        hasHandle = true;
+    }
+    if (!hasHandle) return false;
+
+    HidSixAxisSensorState state{};
+    size_t count = hidGetSixAxisSensorStates(handle, &state, 1);
+    if (count == 0) {
+        hidStartSixAxisSensor(handle);
+        count = hidGetSixAxisSensorStates(handle, &state, 1);
+    }
+    if (count == 0) return false;
+
+    const float wx = state.angular_velocity.x;
+    const float wy = state.angular_velocity.y;
+    const float wz = state.angular_velocity.z;
+
+    const float ax = state.acceleration.x;
+    const float ay = state.acceleration.y;
+    const float az = state.acceleration.z;
+    const float glen = std::sqrt(ax * ax + ay * ay + az * az);
+
+    float upY = 1.f;
+    float upZ = 0.f;
+    if (glen > 0.1f) {
+        upY = -ay / glen;
+        upZ = -az / glen;
+    }
+
+    const float yaw = -(wy * upY + wz * upZ);
+    const float pitch = -wx;
+
+    constexpr float kDeadzone = 0.025f;
+    const float speed = std::hypot(yaw, pitch);
+    if (speed < kDeadzone) {
+        return false;
+    }
+
+    const float factor = (speed - kDeadzone) / speed;
+    dx = yaw * factor;
+    dy = pitch * factor;
+    return true;
 }
 
 // ---- typing

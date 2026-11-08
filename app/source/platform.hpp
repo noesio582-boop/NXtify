@@ -40,6 +40,7 @@ bool legacyData();
 // ---- input: the Joy-Con's buttons are the app's own vocabulary
 enum Button : uint64_t {
     BtnA = 1u << 0, BtnB = 1u << 1, BtnX = 1u << 2, BtnY = 1u << 3,
+    BtnStickL = 1u << 4, BtnStickR = 1u << 5,
     BtnL = 1u << 6, BtnR = 1u << 7, BtnZL = 1u << 8, BtnZR = 1u << 9,
     BtnPlus = 1u << 10, BtnMinus = 1u << 11,
     BtnLeft = 1u << 12, BtnUp = 1u << 13, BtnRight = 1u << 14, BtnDown = 1u << 15,
@@ -50,6 +51,8 @@ void padRead();   // once a frame
 uint64_t padDown();   // pressed this frame
 uint64_t padHeld();
 Stick stick(int which);   // 0 left, 1 right
+bool isJoyConDetached();
+bool rightJoyConMotion(float& dx, float& dy);
 
 // ---- typing
 enum class TextResult { Done, Cancelled, Unavailable };

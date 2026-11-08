@@ -801,12 +801,38 @@ void App::input() {
     else if (plusAfterHold > 0 && --plusAfterHold == 0 && sheet.page == Sheet::Closed && !notice) plusMenu(true);
     const bool modal = sheet.page != Sheet::Closed || notice || je.open || ap.open;
     if (!modal && (down & plat::BtnMinus)) openCanvas(!canvas);
+
+    bool pointerMoved = false;
+
+    // R3 (Right stick click) recenters the pointer
+    if (down & plat::BtnStickR) {
+        pointer.x = css::W / 2.f;
+        pointer.y = css::H / 2.f;
+        pointer.idle = 0;
+        pointerMoved = true;
+    }
+
     // Left stick: a pointer for what the D-pad reaches badly (the player bar's right end, small
-    // buttons). Slow near the centre, fast at the edge; A taps and drags under it like a finger.
+    // buttons). When Joy-Cons are detached, right Joy-Con motion controls the pointer instead.
     const plat::Stick ls = plat::stick(0);
     const float mag = std::hypot(float(ls.x), float(ls.y)) / 32767.f;
-    bool pointerMoved = false;
-    if (mag > 0.15f) {
+    const bool joyConDetached = plat::isJoyConDetached();
+    float mdx = 0.f, mdy = 0.f;
+    if (joyConDetached && plat::rightJoyConMotion(mdx, mdy)) {
+        if (pointer.idle > Pointer::Hide) {
+            const SDL_FRect r = ui.rectOf(ui.focusedId());
+            pointer.x = r.w > 0 ? r.x + r.w / 2 : css::W / 2.f;
+            pointer.y = r.w > 0 ? r.y + r.h / 2 : css::H / 2.f;
+        }
+        const float motionScale = (0.2f + 1.6f * store.motionSpeed) * 5600.f;   // px per radian
+        pointer.x = std::clamp(pointer.x + mdx * motionScale * dt, 0.f, float(css::W - 1));
+        pointer.y = std::clamp(pointer.y + mdy * motionScale * dt, 0.f, float(css::H - 1));
+#ifdef GF_WINDOWED
+        pointerIsMouse_ = false;
+#endif
+        pointer.idle = 0;
+        pointerMoved = true;
+    } else if (!joyConDetached && mag > 0.15f) {
         if (pointer.idle > Pointer::Hide) {
             // It appears where the focus is, so the eye does not have to look for it.
             const SDL_FRect r = ui.rectOf(ui.focusedId());
@@ -827,7 +853,7 @@ void App::input() {
         pointerMoved = true;
     } else if (mouseMoved) {
         pointerMoved = true;   // (the mouse moved it: as the stick does)
-    } else {
+    } else if (!pointerMoved) {
         pointer.idle += dt;
     }
     // the wheel: the list under the pointer, a notch about two rows (the focused list when nothing scrolls there)

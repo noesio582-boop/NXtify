@@ -81,7 +81,7 @@
 
 ### Quick Install (Recommended: All-in-One SD Package)
 
-Download **`NXtify-v0.8.0-SD-Package.zip`** from the [**Releases**](https://github.com/noesio582-boop/NXtify/releases) page and extract its contents directly to the root of your Switch SD card (`sdmc:/`).
+Download **`NXtify-v0.9.0-SD-Package.zip`** from the [**Releases**](https://github.com/noesio582-boop/NXtify/releases) page and extract its contents directly to the root of your Switch SD card (`sdmc:/`).
 
 It places everything in the exact paths required:
 ```text
