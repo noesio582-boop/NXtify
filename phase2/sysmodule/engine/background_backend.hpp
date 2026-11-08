@@ -12,6 +12,8 @@
 
 namespace switify::phase2 {
 
+using NXtifyEngine = SpotifyEngine;
+
 class BackgroundBackend {
  public:
   explicit BackgroundBackend(ServiceCore& core);

@@ -38,6 +38,7 @@ Result switifyIpcBrowseBack(uint64_t generation);
 Result switifyIpcBrowsePlay(uint64_t generation, uint32_t index);
 Result switifyIpcBrowseCurrentPlaylist(void);
 Result switifyIpcBrowseQueue(void);
+Result switifyIpcReloadSession(void);
 
 #ifdef __cplusplus
 }

@@ -146,3 +146,7 @@ Result switifyIpcBrowseCurrentPlaylist(void) {
 Result switifyIpcBrowseQueue(void) {
   return dispatchBrowseRequest(SwitifyIpcCommand_BrowseQueue, 0, 0, NULL);
 }
+
+Result switifyIpcReloadSession(void) {
+  return dispatchNoInput(SwitifyIpcCommand_ReloadSession);
+}

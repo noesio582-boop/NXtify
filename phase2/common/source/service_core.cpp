@@ -236,7 +236,8 @@ bool ServiceCore::isControlCommand(SwitifyIpcCommand command) {
   return (command >= SwitifyIpcCommand_PlayPause &&
           command <= SwitifyIpcCommand_SetAudioQuality) ||
          (command >= SwitifyIpcCommand_BrowseHome &&
-          command <= SwitifyIpcCommand_BrowseQueue);
+          command <= SwitifyIpcCommand_BrowseQueue) ||
+         command == SwitifyIpcCommand_ReloadSession;
 }
 
 SwitifyControlResult ServiceCore::validate(SwitifyIpcCommand command,

@@ -49,6 +49,7 @@ typedef enum SwitifyIpcCommand {
     SwitifyIpcCommand_BrowsePlay = 35,
     SwitifyIpcCommand_BrowseCurrentPlaylist = 36,
     SwitifyIpcCommand_BrowseQueue = 37,
+    SwitifyIpcCommand_ReloadSession = 40,
 } SwitifyIpcCommand;
 
 typedef enum SwitifyIpcCapability {

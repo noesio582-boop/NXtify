@@ -171,6 +171,14 @@ void BackgroundBackend::process(const ControlMessage& message) {
       engine.setHighQuality(message.value != 0);
       result = SwitifyControlResult_Ok;
       break;
+    case SwitifyIpcCommand_ReloadSession:
+      if (ready) {
+        engine.reloadPlaybackSession(true);
+      } else if (engine.state() == NXtifyEngine::State::Error) {
+        engine.retryConnection();
+      }
+      result = SwitifyControlResult_Ok;
+      break;
     default:
       result = SwitifyControlResult_InvalidCommand;
       break;
@@ -773,6 +781,10 @@ void BackgroundBackend::browseCurrentPlaylist(bool queue) {
     return;
   }
   auto session = engine.playbackSession();
+  if (session.tracks.empty()) {
+    engine.reloadPlaybackSession(false);
+    session = engine.playbackSession();
+  }
   const std::string title = session.name.empty() ? "Playlist actual"
                                                   : session.name;
   const uint64_t generation = beginRoot(title, "Sesion de reproduccion actual");

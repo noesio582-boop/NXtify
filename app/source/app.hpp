@@ -908,6 +908,7 @@ private:
     // ================= view_grid.cpp
     void drawHome(float x, float y, float w, float h);
     void loadSpotifySessionLibrary(bool force = false);
+    void saveSpotifySession(int targetPos);
     void drawLibrary(float x, float y, float w, float h);
     void drawArtists(float x, float y, float w, float h, bool genre = false);
     void drawArtist(float x, float y, float w, float h, bool genre = false);

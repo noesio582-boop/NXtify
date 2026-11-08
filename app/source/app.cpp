@@ -2153,6 +2153,8 @@ void App::loadTrack(int trackIdx, bool paused, bool start, double fade, const au
         const std::string title = t.title;
         const std::string plName = q.name;
         int targetIdx = q.pos;
+        saveSpotifySession(targetIdx);
+        bgs.trackGen = bg.state().trackGen;
         LOG("App::loadTrack: dispatching bg.playTrack(targetIdx=%d, title='%s', pl='%s')",
             targetIdx, title.c_str(), plName.c_str());
         if (playTrackThread_.joinable()) playTrackThread_.join();
@@ -2161,7 +2163,7 @@ void App::loadTrack(int trackIdx, bool paused, bool start, double fade, const au
             bg.playTrack(targetIdx, title, plName);
         });
         if (paused) bg.pause(time);
-        bgs.awaitUntil = time + 1.5;
+        bgs.awaitUntil = time + 2.5;
         return;
     }
 }
@@ -2467,6 +2469,119 @@ void App::loadSpotifySessionLibrary(bool force) {
     }
 }
 
+void App::saveSpotifySession(int targetPos) {
+    if (lib.tracks.empty()) return;
+
+    std::vector<int> trackIndices;
+    int selectedIndexInList = -1;
+
+    if (!q.order.empty()) {
+        int n = int(q.order.size());
+        targetPos = std::clamp(targetPos, 0, n - 1);
+        int maxTracks = 50;
+        int start = 0;
+        if (n > maxTracks) {
+            start = std::max(0, targetPos - 15);
+            if (start + maxTracks > n) start = std::max(0, n - maxTracks);
+        }
+        int count = std::min(maxTracks, n - start);
+        for (int i = 0; i < count; ++i) {
+            int orderIdx = start + i;
+            if (orderIdx >= 0 && orderIdx < int(q.order.size())) {
+                int qIdx = q.order[orderIdx];
+                if (qIdx >= 0 && qIdx < int(q.tracks.size())) {
+                    int libIdx = q.tracks[qIdx];
+                    if (libIdx >= 0 && libIdx < int(lib.tracks.size())) {
+                        if (orderIdx == targetPos) {
+                            selectedIndexInList = int(trackIndices.size());
+                        }
+                        trackIndices.push_back(libIdx);
+                    }
+                }
+            }
+        }
+    }
+
+    if (trackIndices.empty()) {
+        if (now.track >= 0 && now.track < int(lib.tracks.size())) {
+            trackIndices.push_back(now.track);
+            selectedIndexInList = 0;
+        } else {
+            return;
+        }
+    }
+    if (selectedIndexInList < 0) selectedIndexInList = 0;
+
+    auto escapeJson = [](const std::string& s) -> std::string {
+        std::string res;
+        for (char c : s) {
+            if (c == '"') res += "\\\"";
+            else if (c == '\\') res += "\\\\";
+            else if (c == '\n') res += "\\n";
+            else if (c == '\r') res += "\\r";
+            else if (c == '\t') res += "\\t";
+            else res += c;
+        }
+        return res;
+    };
+
+    std::string sourceName = q.name.empty() ? "Sesion de reproduccion" : q.name;
+    std::string json = "{\n  \"version\": 1,\n";
+    json += "  \"source\": \"" + escapeJson(sourceName) + "\",\n";
+    json += "  \"index\": " + std::to_string(selectedIndexInList) + ",\n";
+    json += "  \"position_ms\": 0,\n";
+    json += "  \"tracks\": [\n";
+
+    bool first = true;
+    for (int libIdx : trackIndices) {
+        const Track& t = lib.tracks[libIdx];
+        if (t.path.empty()) continue;
+
+        if (!first) json += ",\n";
+        first = false;
+
+        std::string imgUrl;
+        {
+            std::scoped_lock lock(coversMutex_);
+            if (auto it = store.covers.find(t.path); it != store.covers.end()) {
+                imgUrl = it->second;
+            }
+        }
+
+        json += "    {\n";
+        json += "      \"uri\": \"" + escapeJson(t.path) + "\",\n";
+        json += "      \"name\": \"" + escapeJson(t.title) + "\",\n";
+        json += "      \"artist\": \"" + escapeJson(t.artist) + "\",\n";
+        json += "      \"album\": \"" + escapeJson(t.album) + "\",\n";
+        json += "      \"image\": \"" + escapeJson(imgUrl) + "\",\n";
+        json += "      \"duration_ms\": " + std::to_string(uint32_t(t.duration * 1000.0)) + ",\n";
+        json += "      \"explicit\": false,\n";
+        json += "      \"podcast\": false\n";
+        json += "    }";
+    }
+    json += "\n  ]\n}\n";
+
+    std::vector<std::string> paths = {
+        "sdmc:/config/NXtify/playback-session.json",
+        store.path("playback-session.json")
+    };
+    for (const auto& p : paths) {
+        std::string tmp = p + ".tmp";
+        FILE* f = fopen(tmp.c_str(), "wb");
+        if (f) {
+            fwrite(json.data(), 1, json.size(), f);
+            fclose(f);
+            remove(p.c_str());
+            rename(tmp.c_str(), p.c_str());
+            LOG("saveSpotifySession: wrote %zu bytes to %s", json.size(), p.c_str());
+            struct stat st;
+            if (stat(p.c_str(), &st) == 0) {
+                lastSessionMtime_ = static_cast<uint64_t>(st.st_mtime);
+            }
+        }
+    }
+}
+
 /** Takes the background player's queue as NXtify's own. */
 bool App::bgAdoptQueue() {
     if (!player.remote()) return false;
@@ -2654,9 +2769,13 @@ void App::bgUpdate() {
         return;
     }
     const BgState& s = bg.state();
+    if (!bg.title().empty() && bg.title() == now.info.title && time < bgs.awaitUntil) {
+        bgs.awaitUntil = 0;
+    }
     const bool titleChanged = !bg.title().empty() && time >= bgs.awaitUntil &&
                               (bg.title() != now.info.title || (!bg.artist().empty() && bg.artist() != now.info.artist));
-    if (s.trackGen != bgs.trackGen || (now.info.title.empty() && !bg.title().empty()) || titleChanged) {
+    const bool trackGenChanged = s.trackGen != bgs.trackGen && time >= bgs.awaitUntil;
+    if (trackGenChanged || (now.info.title.empty() && !bg.title().empty()) || titleChanged) {
         const bool hadTrack = !now.info.title.empty() && now.track >= 0;
         bgs.trackGen = s.trackGen;
         bgAdoptQueue();

@@ -24,10 +24,10 @@ constexpr SocketInitConfig SocketConfig = {
     .tcp_rx_buf_size = 0x2000,
     .tcp_tx_buf_max_size = 0x4000,
     .tcp_rx_buf_max_size = 0x8000,
-    .udp_tx_buf_size = 0,
-    .udp_rx_buf_size = 0,
+    .udp_tx_buf_size = 0x2400,
+    .udp_rx_buf_size = 0x2400,
     .sb_efficiency = 2,
-    .num_bsd_sessions = 2,
+    .num_bsd_sessions = 3,
     .bsd_service_type = BsdServiceType_User,
 };
 
@@ -140,7 +140,7 @@ int main(int, char**) {
           char detail[40];
           std::snprintf(detail, sizeof(detail), "Red no disponible: 0x%08X",
                         socketInitResult);
-          core->publishServiceState(NXtifyServiceState_Connecting, 0);
+          core->publishServiceState(SwitifyServiceState_Connecting, 0);
           core->publishTrack({}, {}, detail, 0);
           for (int i = 0; i < 20 && supervisorRunning.load(); ++i) {
             svcSleepThread(100000000ULL); // 100ms
@@ -154,7 +154,7 @@ int main(int, char**) {
         nxlog::pushHeapUsage("NXtify backend started");
         break;
       } else {
-        core->publishServiceState(NXtifyServiceState_Connecting, 0);
+        core->publishServiceState(SwitifyServiceState_Connecting, 0);
         core->publishTrack({}, {}, "Conectando a NXtify...", 0);
         for (int i = 0; i < 20 && supervisorRunning.load(); ++i) {
           svcSleepThread(100000000ULL);

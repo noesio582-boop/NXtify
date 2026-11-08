@@ -240,6 +240,7 @@ class SpotifyEngine {
                   uint32_t positionMs = 0);
   void playPlaylistTrack(size_t index);
   void playQueueTrack(size_t upcomingIndex);
+  bool reloadPlaybackSession(bool startPlayback = false);
 
   ObserverId subscribe(std::function<void()> cb);
   void unsubscribe(ObserverId id);

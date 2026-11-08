@@ -1243,7 +1243,10 @@ bool SpotifyEngine::restorePlaybackSession() {
     std::lock_guard<std::mutex> lock(dataMutex);
     if (!activePlaylist.empty()) return false;
   }
+  return reloadPlaybackSession(false);
+}
 
+bool SpotifyEngine::reloadPlaybackSession(bool startPlayback) {
   try {
     std::string serialized;
     {
@@ -1292,6 +1295,14 @@ bool SpotifyEngine::restorePlaybackSession() {
 
     if (tracks.empty()) throw std::runtime_error("session has no tracks");
     if (index >= tracks.size()) index = 0;
+
+    if (startPlayback) {
+      nxlog::pushf("Reload session playing \"%s\" at track %u, %u ms",
+                   source.c_str(), static_cast<unsigned>(index + 1), positionMs);
+      playTracks(std::move(tracks), index, source, positionMs);
+      return true;
+    }
+
 #ifdef SWITIFY_BACKGROUND_SERVICE
     size_t restoredWindowStart = 0;
     size_t restoredTrackCount = 0;
@@ -1342,9 +1353,7 @@ bool SpotifyEngine::restorePlaybackSession() {
                  static_cast<unsigned>(trackCount), positionMs);
     return true;
   } catch (const std::exception& error) {
-    nxlog::pushf("Ignoring invalid local playback session: %s", error.what());
-    std::lock_guard<std::mutex> persistenceLock(playbackPersistenceMutex);
-    std::remove(PLAYBACK_SESSION_FILE);
+    nxlog::pushf("Could not reload local playback session: %s", error.what());
     return false;
   }
 }
@@ -2104,7 +2113,7 @@ std::string SpotifyEngine::userToken(const std::string& scopes) {
   // desktop identity no longer accepts every Web API scope on all accounts,
   // so negotiate the three current identities used by librespot instead of
   // tying the whole application to a single brittle client/scope bundle.
-  constexpr TokenClient clients[] = {
+  const TokenClient clients[] = {
       {"desktop", WEB_CLIENT_ID},
       {"android", ANDROID_CLIENT_ID},
       {"ios", IOS_CLIENT_ID},

@@ -462,6 +462,17 @@ void BgClient::playTrack(int trackIndex, const std::string& trackTitle, const st
     LOG("BgClient::playTrack: trackIndex=%d, title='%s', playlist='%s'", 
         trackIndex, trackTitle.c_str(), playlistName.c_str());
 
+    // 0. Dispatch reload session to sysmodule! App::loadTrack already wrote the newest playback-session.json.
+    Result rc = 0;
+    {
+        std::scoped_lock lock(g_ipcMutex);
+        rc = switifyIpcReloadSession();
+    }
+    LOG("BgClient::playTrack: switifyIpcReloadSession() returned 0x%08X", rc);
+    if (R_SUCCEEDED(rc)) {
+        return;
+    }
+
     // 1. Try playing via BrowseCurrentPlaylist (fast, in-memory, no Spotify AP network roundtrips)
     SwitifyIpcBrowseHeader curH{};
     uint64_t oldGen = 0;

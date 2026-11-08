@@ -84,6 +84,10 @@ Write-Host "Building Spotify application with devkitPro make..."
 & $makeExe -C $appDir "-j$Jobs"
 if ($LASTEXITCODE -ne 0) { throw "Nintendo Switch build failed with exit code $LASTEXITCODE." }
 
-Copy-Item (Join-Path $appDir "Spotify.nro") (Join-Path $buildAppDir "Spotify.nro") -Force
+if (Test-Path (Join-Path $appDir "NXtify.nro")) {
+    Copy-Item (Join-Path $appDir "NXtify.nro") (Join-Path $buildAppDir "NXtify.nro") -Force
+} elseif (Test-Path (Join-Path $appDir "Spotify.nro")) {
+    Copy-Item (Join-Path $appDir "Spotify.nro") (Join-Path $buildAppDir "NXtify.nro") -Force
+}
 Write-Host ""
 Write-Host "Output: $(Join-Path $buildAppDir 'Spotify.nro')"
